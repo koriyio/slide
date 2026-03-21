@@ -7,15 +7,15 @@
 const ui = {
     navItems: document.querySelectorAll('.nav-item'),
     views: document.querySelectorAll('.view'),
-    
+
     // Stats
     statSkaters: document.getElementById('stat-total-skaters'),
     statBattles: document.getElementById('stat-total-battles'),
-    
+
     // Skaters Table
     skatersTbody: document.getElementById('skaters-tbody'),
     btnAddSkater: document.getElementById('btn-add-skater'),
-    
+
     // Modals & Forms
     modalSkater: document.getElementById('modal-skater'),
     formSkater: document.getElementById('form-skater'),
@@ -53,14 +53,14 @@ const ui = {
     formBulk: document.getElementById('form-bulk'),
     bulkData: document.getElementById('bulk-data'),
     bulkCategory: document.getElementById('bulk-category'),
-    
+
     // Auth
     authScreen: document.getElementById('auth-screen'),
     formAuth: document.getElementById('form-auth'),
     authUsername: document.getElementById('auth-username'),
     authPassword: document.getElementById('auth-password'),
     authError: document.getElementById('auth-error'),
-    
+
     // Login
     loginScreen: document.getElementById('login-screen'),
     mainApp: document.getElementById('main-app'),
@@ -91,14 +91,14 @@ function init() {
 }
 
 function setupAuth() {
-    if(ui.formAuth) {
+    if (ui.formAuth) {
         ui.formAuth.onsubmit = (e) => {
             e.preventDefault();
             const u = ui.authUsername.value.trim();
             const p = ui.authPassword.value.trim();
-            
+
             let targetRole = null;
-            
+
             if (u === 'Slide' && p === 'slide2026') {
                 targetRole = 'Juez 1';
             } else if (u.toLowerCase() === 'juez2' && p === 'slide') {
@@ -201,12 +201,12 @@ function setupNavigation() {
             // Remove active classes
             ui.navItems.forEach(nav => nav.classList.remove('active'));
             ui.views.forEach(view => view.classList.remove('active'));
-            
+
             // Add active class to clicked item & target view
             item.classList.add('active');
             const targetViewId = 'view-' + item.dataset.view;
             document.getElementById(targetViewId).classList.add('active');
-            
+
             // Re-render when switching views
             if (item.dataset.view === 'dashboard') renderDashboard();
             if (item.dataset.view === 'skaters') renderSkaters();
@@ -233,7 +233,7 @@ function setupEventListeners() {
         const fName = document.getElementById('skater-firstname').value;
         const lName = document.getElementById('skater-lastname').value;
         const catId = ui.categorySelect.value;
-        const seed  = document.getElementById('skater-seed').value;
+        const seed = document.getElementById('skater-seed').value;
         const idCode = document.getElementById('skater-id-code').value;
         const nat = document.getElementById('skater-nationality') ? document.getElementById('skater-nationality').value : '';
 
@@ -251,12 +251,12 @@ function setupEventListeners() {
 
     ui.btnGenerateHeats.onclick = () => {
         const catId = ui.battlesCategorySelect.value;
-        if(!catId) return showToast('Selecciona una categoría primero', true);
-        
-        const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
-        if(skatersCount < 3) return showToast('Se necesitan al menos 3 patinadores para hacer grupos', true);
+        if (!catId) return showToast('Selecciona una categoría primero', true);
 
-        if(confirm(`Se van a recargar todos los grupos para la categoría seleccionada. ¿Estás seguro?`)){
+        const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
+        if (skatersCount < 3) return showToast('Se necesitan al menos 3 patinadores para hacer grupos', true);
+
+        if (confirm(`Se van a recargar todos los grupos para la categoría seleccionada. ¿Estás seguro?`)) {
             window.db.generateHeats(catId);
             // El render() ocurrirá automáticamente cuando el servidor responda con 'db-update'
             showToast('Generando grupos en el servidor...');
@@ -271,7 +271,7 @@ function setupEventListeners() {
     };
 
     ui.btnFinishBattle.onclick = () => {
-        if(!confirm('¿Estás seguro de finalizar esta batalla? Esto calculará los ganadores y bloqueará la edición.')) return;
+        if (!confirm('¿Estás seguro de finalizar esta batalla? Esto calculará los ganadores y bloqueará la edición.')) return;
 
         window.db.finishBattle(currentBattleId, (res) => {
             if (res && res.success) {
@@ -424,7 +424,7 @@ function setupEventListeners() {
 
             // Nuevo formato: Rank | Nombre | Nacionalidad | ID
             let rank = parseInt(cols[0]);
-            let fullName = cols[1]; 
+            let fullName = cols[1];
             let nationality = cols[2] ? cols[2].trim() : '';
             let idCode = cols[3] || '';
 
@@ -432,7 +432,7 @@ function setupEventListeners() {
                 // Intento alternativo...
                 const num = cols.find(c => !isNaN(parseInt(c.trim())));
                 const name = cols.find(c => c.trim().length > 2 && isNaN(parseInt(c.trim()))); // Permitir nombres más cortos
-                
+
                 // Buscar la columna que parezca un ID (más de 10 caracteres, combinando números y letras, no parece un nombre)
                 const possibleId = cols.find(c => c.trim().length >= 10 && /\d/.test(c) && /[A-Z]/i.test(c));
                 if (possibleId) {
@@ -444,11 +444,11 @@ function setupEventListeners() {
                     fullName = name;
                 }
             } else if (!idCode) {
-                 // Si encontró el nombre y rank en las posiciones esperadas (0 y 1), pero el id no estaba en la posición 3
-                 const possibleId = cols.find((c, i) => i > 1 && c.trim().length >= 10 && /\d/.test(c) && /[A-Z]/i.test(c));
-                 if (possibleId) {
-                     idCode = possibleId.trim();
-                 }
+                // Si encontró el nombre y rank en las posiciones esperadas (0 y 1), pero el id no estaba en la posición 3
+                const possibleId = cols.find((c, i) => i > 1 && c.trim().length >= 10 && /\d/.test(c) && /[A-Z]/i.test(c));
+                if (possibleId) {
+                    idCode = possibleId.trim();
+                }
             }
 
             if (fullName) {
@@ -481,7 +481,7 @@ function setupEventListeners() {
 
 function populateCategories() {
     const cats = window.db.getCategories();
-    
+
     // Guardar selección actual para no perderla al actualizar
     const currentBattlesCat = ui.battlesCategorySelect.value;
     const currentBracketsCat = ui.bracketsCategorySelect.value;
@@ -489,7 +489,7 @@ function populateCategories() {
     ui.categorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
     ui.battlesCategorySelect.innerHTML = '';
     ui.bracketsCategorySelect.innerHTML = '';
-    
+
     cats.forEach(c => {
         // Form Modal
         const opt1 = document.createElement('option');
@@ -692,16 +692,16 @@ function renderDashboard() {
 function renderSkaters() {
     const skaters = window.db.getSkaters();
     const categories = window.db.getCategories();
-    
+
     ui.skatersTbody.innerHTML = '';
-    
+
     if (skaters.length === 0) {
         ui.skatersTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No hay patinadores inscritos aún.</td></tr>';
         return;
     }
 
     // Sort by Category, then by Seed
-    const sorted = [...skaters].sort((a,b) => {
+    const sorted = [...skaters].sort((a, b) => {
         if (a.categoryId !== b.categoryId) return a.categoryId.localeCompare(b.categoryId);
         return a.seedNumber - b.seedNumber;
     });
@@ -727,19 +727,57 @@ function renderSkaters() {
 function renderBattles() {
     const catId = ui.battlesCategorySelect.value;
     ui.battlesContainer.innerHTML = '';
-    
-    if(!catId) return;
 
-    const battles = window.db.getBattlesByCategory(catId);
     const allSkaters = window.db.getSkaters();
+    let battles = [];
 
-    if(battles.length === 0) {
-        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay grupos generados para esta categoría. Presiona "Generar Grupos".</div>';
+    // Si hay categoría seleccionada, filtrar por ella. Si no, mostrar TODAS las batallas
+    if (catId) {
+        battles = window.db.getBattlesByCategory(catId);
+    } else {
+        // Obtener todas las batallas de todas las categorías
+        battles = window.db.getDB().battles || [];
+    }
+
+    if (battles.length === 0) {
+        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas generadas aún. Presiona "Generar Grupos" para crear nuevas.</div>';
         return;
     }
 
+    // Agrupar batallas por categoría para mostrar cuando se muestran todas
+    const battlesByCategory = {};
+    battles.forEach(battle => {
+        if (!battlesByCategory[battle.categoryId]) {
+            battlesByCategory[battle.categoryId] = [];
+        }
+        battlesByCategory[battle.categoryId].push(battle);
+    });
+
+    // Si hay categoría seleccionada, renderizar normalmente
+    if (catId) {
+        renderBattlesByCategory(battles, allSkaters);
+        checkAndShowNextPhaseButton(catId);
+    } else {
+        // Renderizar todas las batallas agrupadas por categoría
+        const categories = window.db.getCategories();
+        Object.keys(battlesByCategory).forEach(categoryId => {
+            const category = categories.find(c => c.id === categoryId);
+            const categoryName = category ? category.name : categoryId;
+
+            // Category separator
+            const categoryTitle = document.createElement('h3');
+            categoryTitle.style.cssText = 'grid-column: 1 / -1; color: var(--accent); margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.2rem; text-transform: uppercase; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;';
+            categoryTitle.innerHTML = `<i class="ph ph-award"></i> ${categoryName}`;
+            ui.battlesContainer.appendChild(categoryTitle);
+
+            renderBattlesByCategory(battlesByCategory[categoryId], allSkaters);
+        });
+    }
+}
+
+function renderBattlesByCategory(battles, allSkaters) {
     const phases = ['Heat', 'Quarter-Final', 'Semi-Final', 'Final'];
-    
+
     phases.forEach(phase => {
         const phaseBattles = battles.filter(b => b.phase === phase);
         if (phaseBattles.length === 0) return;
@@ -778,10 +816,10 @@ function renderBattles() {
             let listHtml = '<ul style="list-style:none; padding:0; flex:1; display:flex; flex-direction:column; gap:0.5rem;">';
             battle.skaters.forEach(bs => {
                 const sInfo = allSkaters.find(s => s.id === bs.skaterId);
-                if(sInfo) {
+                if (sInfo) {
                     let statusHtml = '';
                     let progressHtml = '';
-                    
+
                     if (battle.status === 'completed') {
                         // Badge de clasificado/eliminado
                         if (bs.qualified) {
@@ -793,26 +831,26 @@ function renderBattles() {
                         // Progress Indicator (Dots)
                         const maxSlots = battle.phase === 'Final' ? 5 : 4;
                         let filledSlots = 0;
-                        if(bs.judging) {
-                            for(let i=0; i<maxSlots; i++) {
-                                 // Check if Juez 1 has recorded something, or any judge
-                                 const hasTrick = ['Juez 1', 'Juez 2', 'Juez 3'].some(role => bs.judging[role] && bs.judging[role][i]);
-                                 if(hasTrick) filledSlots++;
+                        if (bs.judging) {
+                            for (let i = 0; i < maxSlots; i++) {
+                                // Check if Juez 1 has recorded something, or any judge
+                                const hasTrick = ['Juez 1', 'Juez 2', 'Juez 3'].some(role => bs.judging[role] && bs.judging[role][i]);
+                                if (hasTrick) filledSlots++;
                             }
                         }
-                        
+
                         let dots = '';
-                        for(let i=0; i<maxSlots; i++) {
-                            if(i < filledSlots) {
+                        for (let i = 0; i < maxSlots; i++) {
+                            if (i < filledSlots) {
                                 dots += `<div style="width:8px; height:8px; border-radius:50%; background:var(--primary); box-shadow:0 0 5px rgba(0, 57, 166, 0.5);"></div>`;
                             } else {
                                 dots += `<div style="width:8px; height:8px; border-radius:50%; background:var(--border);"></div>`;
                             }
                         }
-                        
+
                         // Show seed number or progress
                         progressHtml = `<div style="display:flex; gap:3px; margin-right:0.5rem;" title="Derrapes registrados">${dots}</div>`;
-                        
+
                         statusHtml = sInfo.seedNumber > 0
                             ? `<span style="font-size:0.7rem; background:var(--bg-app); padding:0.2rem 0.5rem; border-radius:12px; color:var(--text-muted);">Seed #${sInfo.seedNumber}</span>`
                             : '';
@@ -844,12 +882,17 @@ function renderBattles() {
             ui.battlesContainer.appendChild(card);
         });
     });
+}
 
-    // Check if we can generate next phase directly from Battles view
-    const currentBattles = battles.filter(b => b.phase === battles[battles.length-1].phase);
+// Check if we can generate next phase directly from Battles view
+function checkAndShowNextPhaseButton(catId) {
+    if (!catId) return; // No mostrar botón cuando se ven todas las categorías
+
+    const battles = window.db.getBattlesByCategory(catId);
+    const currentBattles = battles.filter(b => b.phase === battles[battles.length - 1].phase);
     const uncompleted = currentBattles.some(b => b.status !== 'completed');
     const isFinal = currentBattles.some(b => b.phase === 'Final');
-    
+
     if (!uncompleted && !isFinal) {
         const nextPhaseDiv = document.createElement('div');
         nextPhaseDiv.style.cssText = 'grid-column: 1 / -1; text-align:center; padding: 2rem 0; border-top: 1px dashed var(--border); margin-top: 1rem;';
@@ -863,7 +906,7 @@ function openBattle(battleId, fromServer = false) {
     currentBattleId = battleId;
     ui.views.forEach(v => v.classList.remove('active'));
     ui.viewActiveBattle.classList.add('active');
-    
+
     // De-select nav items to show we are in deep view
     ui.navItems.forEach(nav => nav.classList.remove('active'));
 
@@ -959,14 +1002,14 @@ function renderActiveBattle() {
         col.style.cssText = 'background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-md); display:flex; flex-direction:column; overflow:hidden;';
 
         // Header con resultados globales
-        const judging = bs.judging || { 'Juez 1': [null,null,null,null], 'Juez 2': [null,null,null,null], 'Juez 3': [null,null,null,null] };
+        const judging = bs.judging || { 'Juez 1': [null, null, null, null], 'Juez 2': [null, null, null, null], 'Juez 3': [null, null, null, null] };
         const getSum = (role) => {
             let scores = (judging[role] || []).map(t => t ? t.finalScore : 0);
             scores.sort((a, b) => b - a);
             const maxToCount = battle.phase === 'Final' ? 4 : 3;
             return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
         };
-        
+
         const j1Sum = getSum('Juez 1');
         const j2Sum = getSum('Juez 2');
         const j3Sum = getSum('Juez 3');
@@ -978,7 +1021,7 @@ function renderActiveBattle() {
         const isAllReady = Object.keys(judging).every(role => {
             const slots = judging[role] || [];
             // Verificar que hayamos llenado hasta maxSlots
-            for(let i=0; i<maxSlots; i++) if(slots[i] === null || slots[i] === undefined) return false;
+            for (let i = 0; i < maxSlots; i++) if (slots[i] === null || slots[i] === undefined) return false;
             return true;
         });
         const showGlobal = battle.status === 'completed' || isAllReady;
@@ -1013,35 +1056,35 @@ function renderActiveBattle() {
                 </div>
 
                 ${battle.status === 'completed' ? (() => {
-                    // Ordenar skaters por puntaje para determinar la posición
-                    const sortedSkaters = battle.skaters.sort((a, b) => b.totalScore - a.totalScore);
-                    const position = sortedSkaters.findIndex(s => s.skaterId === bs.skaterId) + 1;
+                // Ordenar skaters por puntaje para determinar la posición
+                const sortedSkaters = battle.skaters.sort((a, b) => b.totalScore - a.totalScore);
+                const position = sortedSkaters.findIndex(s => s.skaterId === bs.skaterId) + 1;
 
-                    // Determinar sufijo ordinal (1º, 2º, 3º, 4º, etc.)
-                    const sufijos = {1: 'º', 2: 'º', 3: 'º'};
-                    const sufijo = sufijos[position] || 'º';
+                // Determinar sufijo ordinal (1º, 2º, 3º, 4º, etc.)
+                const sufijos = { 1: 'º', 2: 'º', 3: 'º' };
+                const sufijo = sufijos[position] || 'º';
 
-                    // Colores diferentes para top 3 (mejorados para mayor contraste)
-                    let colorBg, colorText, borderStyle;
-                    if (position === 1) { 
-                        colorBg = '#FEF08A'; colorText = '#854D0E'; borderStyle = '1px solid #F59E0B'; 
-                    } // Oro
-                    else if (position === 2) { 
-                        colorBg = '#E5E7EB'; colorText = '#374151'; borderStyle = '1px solid #9CA3AF'; 
-                    } // Plata
-                    else if (position === 3) { 
-                        colorBg = '#FFEDD5'; colorText = '#9A3412'; borderStyle = '1px solid #FB923C'; 
-                    } // Bronce
-                    else { 
-                        colorBg = 'rgba(239, 68, 68, 0.1)'; colorText = 'var(--danger)'; borderStyle = '1px solid rgba(239, 68, 68, 0.3)'; 
-                    }
+                // Colores diferentes para top 3 (mejorados para mayor contraste)
+                let colorBg, colorText, borderStyle;
+                if (position === 1) {
+                    colorBg = '#FEF08A'; colorText = '#854D0E'; borderStyle = '1px solid #F59E0B';
+                } // Oro
+                else if (position === 2) {
+                    colorBg = '#E5E7EB'; colorText = '#374151'; borderStyle = '1px solid #9CA3AF';
+                } // Plata
+                else if (position === 3) {
+                    colorBg = '#FFEDD5'; colorText = '#9A3412'; borderStyle = '1px solid #FB923C';
+                } // Bronce
+                else {
+                    colorBg = 'rgba(239, 68, 68, 0.1)'; colorText = 'var(--danger)'; borderStyle = '1px solid rgba(239, 68, 68, 0.3)';
+                }
 
-                    return `
+                return `
                         <div style="margin-top:0.8rem; padding:0.4rem; border-radius:6px; font-weight:900; font-size:0.85rem; background:${colorBg}; color:${colorText}; border:${borderStyle}; text-align:center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); letter-spacing: 0.5px;">
                             ${position}${sufijo} LUGAR
                         </div>
                     `;
-                })() : !showGlobal ? '<p style="font-size:0.7rem; color:var(--text-muted); margin-top:0.5rem; letter-spacing:0.5px;">RESULTADO PARCIAL OCULTO</p>' : ''}
+            })() : !showGlobal ? '<p style="font-size:0.7rem; color:var(--text-muted); margin-top:0.5rem; letter-spacing:0.5px;">RESULTADO PARCIAL OCULTO</p>' : ''}
             </div>
         `;
 
@@ -1074,7 +1117,7 @@ function renderActiveBattle() {
                     <button class="btn-empty-slot" onclick="openJudgeModal(${sInfo.id}, '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"
                             style="width:100%; border:1px dashed var(--border); background:none; color:var(--text-muted); padding:1rem; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; transition:all 0.2s;">
                         <i class="ph ph-plus-circle" style="font-size:1rem; margin-right:0.3rem; vertical-align:middle;"></i>
-                        Ejecución ${i+1}: <span style="opacity:0.5;">+ Añadir</span>
+                        Ejecución ${i + 1}: <span style="opacity:0.5;">+ Añadir</span>
                     </button>
                 `;
             } else {
@@ -1208,8 +1251,8 @@ function renderBrackets() {
                     <div style="font-weight:700; color:var(--text-muted); font-size:0.85rem; margin-bottom:0.8rem; display:flex; justify-content:space-between; align-items:center;">
                         <span>${phase} #${battle.heatNumber}</span>
                         ${battle.status === 'completed'
-                            ? '<span style="color:#10B981; font-size:0.75rem;"><i class="ph-fill ph-check-circle"></i> Finalizado</span>'
-                            : '<span style="color:#F59E0B; font-size:0.75rem;"><i class="ph ph-clock"></i> Pendiente</span>'}
+                    ? '<span style="color:#10B981; font-size:0.75rem;"><i class="ph-fill ph-check-circle"></i> Finalizado</span>'
+                    : '<span style="color:#F59E0B; font-size:0.75rem;"><i class="ph ph-clock"></i> Pendiente</span>'}
                     </div>
                     ${skatersHtml}
                 </div>
@@ -1223,7 +1266,7 @@ function renderBrackets() {
 }
 
 window.triggerNextPhase = (catId) => {
-    if(confirm('¿Generar siguiente ronda? Los clasificados pasarán a nuevas llaves.')) {
+    if (confirm('¿Generar siguiente ronda? Los clasificados pasarán a nuevas llaves.')) {
         if (window.db.generateNextPhase(catId)) {
             showToast('Generando siguiente ronda...');
         } else {
@@ -1269,8 +1312,10 @@ function exportTournamentCSV() {
         let j2Score = 0;
         let j3Score = 0;
 
-        const phaseMap = { 'Preliminar': 1, 'Cuartos': 2, 'Semifinal': 3, 'Final': 4,
-                          'Heat': 1, 'Quarter-Final': 2, 'Semi-Final': 3 };
+        const phaseMap = {
+            'Preliminar': 1, 'Cuartos': 2, 'Semifinal': 3, 'Final': 4,
+            'Heat': 1, 'Quarter-Final': 2, 'Semi-Final': 3
+        };
 
         if (skaterBattles.length > 0) {
             // Obtener la fase más avanzada
@@ -1690,8 +1735,8 @@ function exportTournamentCSV() {
 
         // Usar los datos ya calculados
         let maxPhase = sk.finalPhase === 'Final' ? '🏆 Final' :
-                       sk.finalPhase === 'Semifinal' || sk.finalPhase === 'Semi-Final' ? 'Semifinal' :
-                       sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' ? 'Cuartos' : 'Preliminar';
+            sk.finalPhase === 'Semifinal' || sk.finalPhase === 'Semi-Final' ? 'Semifinal' :
+                sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' ? 'Cuartos' : 'Preliminar';
 
         // Buscar las batallas
         const skaterBattles = battles.filter(b => b.skaters.some(s => s.skaterId === sk.id));
