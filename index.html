@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slide Competition Manager | Inline Freestyle</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    <!-- Notificaciones Generales -->
+    <div id="toast-container"></div>
+
+    <!-- Contenedor de Confetti -->
+    <div id="confetti-container" class="confetti-container" style="display:none;"></div>
+
+    <!-- PANTALLA DE AUTENTICACION GLOBAL -->
+    <div id="auth-screen" class="login-container">
+        <div class="login-card" style="position: relative; overflow: hidden; border: 1px solid var(--border);">
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 8px; background: var(--chile-gradient);"></div>
+            <div style="margin-bottom: 1.5rem;">
+                <img src="img/logo.png?v=2" alt="Liga Chilena Logo" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                <h2 style="display: block; font-size: 1.8rem; margin-bottom: 0;">ACCESO</h2>
+            </div>
+            <p style="font-weight: 500; color: var(--text-main);">Panel de Administración</p>
+            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">Liga Chilena de Inline Freestyle</p>
+            
+            <form id="form-auth" style="margin-top: 1.5rem; text-align: left;">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; color:var(--text-muted); font-size:0.9rem; font-weight: 700;">USUARIO</label>
+                    <input type="text" id="auth-username" required autocomplete="off" style="width:100%; padding:0.8rem; border-radius:var(--radius-sm); border:2px solid var(--border); background:var(--bg-app); color:var(--text-main); font-size:1rem; transition: border-color 0.2s;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom:0.5rem; color:var(--text-muted); font-size:0.9rem; font-weight: 700;">CONTRASEÑA</label>
+                    <input type="password" id="auth-password" required style="width:100%; padding:0.8rem; border-radius:var(--radius-sm); border:2px solid var(--border); background:var(--bg-app); color:var(--text-main); font-size:1rem; transition: border-color 0.2s;">
+                </div>
+                <button type="submit" class="btn-primary btn-full" style="padding: 1rem; font-size: 1.1rem; border-radius: var(--radius-sm); background: var(--primary-gradient); letter-spacing: 1px; text-transform: uppercase;"><i class="ph-fill ph-sign-in"></i> Ingresar</button>
+            </form>
+            <p id="auth-error" style="color:var(--danger); margin-top:1rem; font-size:0.9rem; display:none; font-weight: bold;"><i class="ph-fill ph-warning-circle"></i> Credenciales incorrectas</p>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE LOGIN / SELECCIÓN DE ROL -->
+    <div id="login-screen" class="login-container" style="display:none;">
+        <div class="login-card">
+            <h2><img src="img/logo.png?v=2" alt="Liga Chilena Logo" style="width: 40px; height: 40px; object-fit: contain;"> SLIDE BATTLE</h2>
+            <p>Selecciona tu rol para ingresar al sistema</p>
+            
+            <div class="role-grid">
+                <button class="role-btn admin-role" data-role="Juez 1">
+                    <i class="ph ph-shield-star"></i>
+                    <span>Juez 1 (Admin)</span>
+                </button>
+                <button class="role-btn judge-role" data-role="Juez 2">
+                    <i class="ph ph-user"></i>
+                    <span>Juez 2</span>
+                </button>
+                <button class="role-btn judge-role" data-role="Juez 3">
+                    <i class="ph ph-user"></i>
+                    <span>Juez 3</span>
+                </button>
+            </div>
+            <p id="login-error" style="color:var(--danger); margin-top:1rem; font-size:0.9rem; display:none;"></p>
+        </div>
+    </div>
+
+    <!-- Layout Principal -->
+    <div class="app-container" id="main-app" style="display:none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <img src="img/logo.png?v=2" alt="Liga Chilena Logo" style="width: 60px; height: 60px; object-fit: contain;">
+                <div>
+                    <h1>SLIDE BATTLE</h1>
+                    <p>Chile 2026</p>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <i class="ph ph-squares-four"></i> Panel Principal
+                </a>
+                <a href="#" class="nav-item" data-view="skaters">
+                    <i class="ph ph-users"></i> Competidores
+                </a>
+                <a href="#" class="nav-item" data-view="battles">
+                    <i class="ph ph-swords"></i> Batallas
+                </a>
+                <a href="#" class="nav-item" data-view="brackets">
+                    <i class="ph ph-tree-structure"></i> Llaves de Torneo
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="btn-export-db" class="btn-secondary btn-full" style="display:none;"><i class="ph ph-download-simple"></i> Respaldar</button>
+                <label id="btn-import-db" class="btn-secondary btn-full" style="display:none; margin-top:0.5rem; text-align:center; cursor:pointer;">
+                    <i class="ph ph-upload-simple"></i> Restaurar
+                    <input type="file" id="input-import-db" accept=".json" style="display:none;">
+                </label>
+                <button id="btn-export-report" class="btn-primary btn-full" style="margin-top:0.5rem;"><i class="ph ph-file-csv"></i> Exportar Reporte</button>
+                <button id="btn-restart-server" class="btn-primary btn-full" style="margin-top:0.5rem; background:var(--primary);"><i class="ph ph-power"></i> Reiniciar Servidor</button>
+                <button id="btn-reset-db" class="btn-secondary btn-full" style="margin-top:0.5rem; color:var(--danger); border-color:rgba(239,68,68,0.3);"><i class="ph ph-trash"></i> Reiniciar DB</button>
+            </div>
+
+            <!-- Developer Credit -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--sidebar-border); text-align: center;">
+                <p style="font-size: 0.85rem; color: var(--chile-red); font-weight: 700; margin-bottom: 0.3rem; letter-spacing: 1px; text-shadow: 0 0 10px rgba(213, 43, 30, 0.5);">
+                    <i class="ph ph-rocket"></i> VERSIÓN 1.0
+                </p>
+                <p style="font-size: 0.9rem; color: var(--sidebar-text-muted); margin-bottom: 0.3rem;">
+                    <i class="ph ph-code"></i> Desarrollado por
+                </p>
+                <p style="font-size: 1.1rem; color: var(--chile-white); font-weight: 700; margin-bottom: 0.2rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                    Rodrigo Aburto Pereira
+                </p>
+                <p style="font-size: 0.8rem; color: var(--sidebar-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                    Técnico de Nivel Superior en Informática
+                </p>
+            </div>
+
+            <!-- Profile Sidebar -->
+            <div id="user-profile-bar" class="sidebar-user">
+                <div class="user-avatar">
+                    <i class="ph-fill ph-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <span class="user-label">Conectado como</span>
+                    <strong id="current-user-role" class="user-role"></strong>
+                </div>
+                <button id="btn-logout" class="btn-logout-sidebar" title="Cerrar sesión">
+                    <i class="ph ph-sign-out"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Contenido -->
+        <main class="main-content" style="position: relative;">
+
+            
+            <!-- Vistas Dinámicas -->
+            
+            <!-- VISTA: Dashboard -->
+            <section id="view-dashboard" class="view active">
+                <header class="view-header">
+                    <h2>Panel Principal</h2>
+                    <p>Resumen del evento</p>
+                </header>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="ph ph-users"></i>
+                        <div class="stat-info">
+                            <h3 id="stat-total-skaters">0</h3>
+                            <p>Inscritos Totales</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="ph ph-swords"></i>
+                        <div class="stat-info">
+                            <h3 id="stat-total-battles">0</h3>
+                            <p>Batallas Activas</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VISTA: Competidores -->
+            <section id="view-skaters" class="view">
+                <header class="view-header">
+                    <div>
+                        <h2>Competidores</h2>
+                        <p>Gestión de patinadores inscritos</p>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button id="btn-import-bulk" class="btn-secondary"><i class="ph ph-file-csv"></i> Importar Masivo</button>
+                        <button id="btn-add-skater" class="btn-primary"><i class="ph ph-plus"></i> Inscribir Patinador</button>
+                    </div>
+                </header>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID / WSSA</th>
+                                <th>Nombres</th>
+                                <th>Apellidos</th>
+                                <th>Nacionalidad</th>
+                                <th>Categoría</th>
+                                <th>Ranking / Seed</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="skaters-tbody">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VISTA: Batallas (Heats) -->
+            <section id="view-battles" class="view">
+                <header class="view-header">
+                    <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                        <h2>Batallas (Heats)</h2>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <label for="battles-category-filter" style="font-size:0.8rem; color:var(--text-muted);">Categoría:</label>
+                            <select id="battles-category-filter" style="min-width:200px;">
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+                    </div>
+                    <button id="btn-generate-heats" class="btn-primary"><i class="ph ph-calendar-plus"></i> Generar Grupos</button>
+                </header>
+                <div id="battles-container" class="battles-grid">
+                    <!-- Tarjetas de batallas dinámicas -->
+                </div>
+            </section>
+
+            <!-- VISTA: Brackets (Llaves) -->
+            <section id="view-brackets" class="view">
+                <header class="view-header">
+                    <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                        <h2>Llaves de Torneo</h2>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <label for="brackets-category-filter" style="font-size:0.8rem; color:var(--text-muted);">Categoría:</label>
+                            <select id="brackets-category-filter" style="min-width:200px;">
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+                    </div>
+                </header>
+                <div id="bracket-container" style="display:flex; flex-direction:column; gap:2rem;">
+                    <!-- Tournament tree -->
+                </div>
+            </section>
+
+            <section id="view-active-battle" class="view">
+                <header class="view-header" style="align-items:center;">
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <button id="btn-back-battles" class="btn-secondary" style="padding:0.5rem;"><i class="ph ph-arrow-left"></i></button>
+                        <div>
+                            <h2 id="active-battle-title">Mesa de Jueceo</h2>
+                            <p id="active-battle-subtitle">Heat X - Categoría</p>
+                        </div>
+                    </div>
+                    <button id="btn-finish-battle" class="btn-primary" style="background:var(--accent);"><i class="ph ph-flag-checkered"></i> Finalizar Batalla</button>
+                </header>
+                
+                <div id="active-battle-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1.5rem;">
+                    <!-- Skater Battle Columns (Dynamic) -->
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Modal: Jueceo de Truco -->
+    <div id="modal-judge" class="modal hidden">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h3>Registrar Truco</h3>
+                <button class="btn-close" id="btn-close-judge"><i class="ph ph-x"></i></button>
+            </div>
+            <div style="margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid var(--border);">
+                <p style="color:var(--text-muted); font-size:0.9rem;">Patinador</p>
+                <h4 id="judge-skater-name" style="font-size:1.2rem; color:var(--primary);">Nombre Patinador</h4>
+            </div>
+            <form id="form-judge">
+                <input type="hidden" id="judge-slot-index" value="0">
+
+                <!-- Buscador de Trucos con Autocompletado -->
+                <div class="form-group">
+                    <label>Buscar Slide</label>
+                    <div style="position:relative;">
+                        <i class="ph ph-magnifying-glass" style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1.2rem; pointer-events:none;"></i>
+                        <input type="text" id="judge-trick-search" placeholder="Escribe para buscar... (ej: Soul, Magic)" autocomplete="off" style="padding-left:3rem;">
+                        <!-- Lista de sugerencias -->
+                        <div id="trick-suggestions" style="position:absolute; top:100%; left:0; right:0; max-height:250px; overflow-y:auto; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); z-index:100; display:none; box-shadow:0 8px 30px rgba(0,0,0,0.4);"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Slide Realizado</label>
+                    <select id="judge-trick-select" style="max-height:200px; overflow-y:auto;">
+                        <!-- Dynamic Tricks -->
+                    </select>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">
+                        <i class="ph ph-info"></i> Escribe arriba para filtrar o selecciona de la lista
+                    </p>
+                </div>
+                <div class="form-group" style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(239, 68, 68, 0.08); padding:0.5rem 0.8rem; border-radius:var(--radius-sm); border:1px solid rgba(239, 68, 68, 0.2); cursor:pointer;" onclick="const cb = document.getElementById('judge-is-fail'); if(event.target !== cb) cb.click();">
+                    <input type="checkbox" id="judge-is-fail" style="width:15px; height:15px; cursor:pointer;">
+                    <label for="judge-is-fail" style="margin:0; color:var(--danger); font-weight:600; font-size:0.85rem; cursor:pointer;" onclick="event.preventDefault()">Falla / Caída (0 Pts)</label>
+                </div>
+                <!-- Slider de Distancia -->
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <label style="margin:0;">Distancia del Derrape</label>
+                        <span id="judge-distance-val" style="background:var(--primary); color:white; padding:0.2rem 0.6rem; border-radius:12px; font-weight:bold; font-size:0.9rem;">2.5m</span>
+                    </div>
+                    <input type="range" id="judge-distance" min="2.5" max="10" step="0.5" value="2.5" style="width:100%; cursor:pointer; accent-color:var(--primary);">
+                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">
+                        <span>2.5m</span>
+                        <span>10m</span>
+                    </div>
+                </div>
+                <div class="form-group" id="judge-adjustment-group">
+                    <label>Ajuste de Puntos (+ / -)</label>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <button type="button" class="btn-secondary" onclick="adjustPoints(-1)" style="padding:0.5rem; flex:1;">-1.0</button>
+                        <button type="button" class="btn-secondary" onclick="adjustPoints(-0.5)" style="padding:0.5rem; flex:1;">-0.5</button>
+                        <input type="number" id="judge-adjustment" value="0" step="0.1" style="text-align:center; font-size:1.2rem; width:80px; background:var(--bg-app); border:1px solid var(--border); color:var(--text-main); border-radius:var(--radius-sm);">
+                        <button type="button" class="btn-secondary" onclick="adjustPoints(0.5)" style="padding:0.5rem; flex:1;">+0.5</button>
+                        <button type="button" class="btn-secondary" onclick="adjustPoints(1)" style="padding:0.5rem; flex:1;">+1.0</button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary btn-cancel" id="btn-cancel-judge">Cancelar</button>
+                    <button type="submit" class="btn-primary">Registrar Puntaje</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="modal-skater" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-skater-title">Inscribir Patinador</h3>
+                <button class="btn-close" id="btn-close-skater"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="form-skater">
+                <div class="form-group">
+                    <label>Nombres</label>
+                    <input type="text" id="skater-firstname" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Apellidos</label>
+                    <input type="text" id="skater-lastname" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>ID / WSSA ID (Opcional)</label>
+                    <input type="text" id="skater-id-code" placeholder="Ej: 12004SGP..." autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Nacionalidad (Opcional)</label>
+                    <input type="text" id="skater-nationality" placeholder="Ej: CHI" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="skater-category" required>
+                        <!-- Dynamic categories -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ranking / Seed (Opcional)</label>
+                    <input type="number" id="skater-seed" placeholder="Ej: 1" min="0">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary btn-cancel" id="btn-cancel-skater">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Patinador</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-bulk" class="modal hidden">
+        <div class="modal-content" style="max-width:600px;">
+            <div class="modal-header">
+                <h3>Importar Masivamente</h3>
+                <button class="btn-close" id="btn-close-bulk"><i class="ph ph-x"></i></button>
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Pega los datos directamente desde Excel o un archivo CSV. El sistema buscará las columnas de <strong>Nombre</strong> y <strong>Ranking</strong>.</p>
+            <form id="form-bulk">
+                <div class="form-group">
+                    <label>Categoría para estos patinadores</label>
+                    <select id="bulk-category" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Datos (Pega aquí las celdas de Excel)</label>
+                    <textarea id="bulk-data" placeholder="Pega aquí las filas de Excel..." style="width:100%; height:200px; background:var(--bg-app); color:var(--text-main); border:1px solid var(--border); padding:0.8rem; border-radius:var(--radius-sm); font-family:monospace; font-size:0.8rem;"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary btn-cancel" id="btn-cancel-bulk">Cancelar</button>
+                    <button type="submit" class="btn-primary">Procesar e Importar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
