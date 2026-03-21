@@ -171,14 +171,14 @@
                     <p>Resumen del evento</p>
                 </header>
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <div class="stat-card clickable" data-navigate="skaters">
                         <i class="ph ph-users"></i>
                         <div class="stat-info">
                             <h3 id="stat-total-skaters">0</h3>
                             <p>Inscritos Totales</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card clickable" data-navigate="battles">
                         <i class="ph ph-swords"></i>
                         <div class="stat-info">
                             <h3 id="stat-total-battles">0</h3>
@@ -420,7 +420,8 @@
             </div>
             <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Pega los datos directamente desde
                 Excel o un archivo CSV. El sistema buscará las columnas de <strong>Nombre</strong> y
-                <strong>Ranking</strong>.</p>
+                <strong>Ranking</strong>.
+            </p>
             <form id="form-bulk">
                 <div class="form-group">
                     <label>Categoría para estos patinadores</label>

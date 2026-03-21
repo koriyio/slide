@@ -195,26 +195,46 @@ function applyRoleRestrictions() {
 
 // Navigation Logic
 function setupNavigation() {
+    // Sidebar items
     ui.navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            // Remove active classes
-            ui.navItems.forEach(nav => nav.classList.remove('active'));
-            ui.views.forEach(view => view.classList.remove('active'));
-
-            // Add active class to clicked item & target view
-            item.classList.add('active');
-            const targetViewId = 'view-' + item.dataset.view;
-            document.getElementById(targetViewId).classList.add('active');
-
-            // Re-render when switching views
-            if (item.dataset.view === 'dashboard') renderDashboard();
-            if (item.dataset.view === 'skaters') renderSkaters();
-            if (item.dataset.view === 'battles') renderBattles();
-            if (item.dataset.view === 'brackets') renderBrackets();
+            window.navigateTo(item.dataset.view);
         });
     });
+
+    // Dashboard shortcuts (and any other element with data-navigate) using Event Delegation
+    document.body.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-navigate]');
+        if (target) {
+            e.preventDefault();
+            window.navigateTo(target.dataset.navigate);
+        }
+    });
 }
+
+// Global helper for simple direct navigation
+window.navigateTo = function (viewName) {
+    const targetNav = Array.from(ui.navItems).find(n => n.dataset.view === viewName);
+    // If nav doesn't exist or is explicitly hidden due to role restrictions, abort
+    if (!targetNav || targetNav.style.display === 'none') return;
+
+    // Remove active classes
+    ui.navItems.forEach(nav => nav.classList.remove('active'));
+    ui.views.forEach(view => view.classList.remove('active'));
+
+    // Add active class
+    targetNav.classList.add('active');
+    const targetViewId = 'view-' + viewName;
+    const targetView = document.getElementById(targetViewId);
+    if (targetView) targetView.classList.add('active');
+
+    // Call render
+    if (viewName === 'dashboard') renderDashboard();
+    if (viewName === 'skaters') renderSkaters();
+    if (viewName === 'battles') renderBattles();
+    if (viewName === 'brackets') renderBrackets();
+};
 
 // Event Listeners
 function setupEventListeners() {
