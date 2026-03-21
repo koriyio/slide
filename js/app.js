@@ -753,8 +753,18 @@ function renderBattles() {
     const allSkaters = window.db.getSkaters();
 
     if(battles.length === 0) {
-        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay grupos generados para esta categoría. Presiona "Generar Grupos".</div>';
-        return;
+        const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
+        if (skatersCount >= 3) {
+            window.db.generateHeats(catId);
+            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">Generando grupos automáticamente... <i class="ph ph-spinner ph-spin"></i></div>';
+            return;
+        } else if (skatersCount > 0) {
+            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">No hay suficientes competidores para hacer grupos. Se necesitan al menos 3.</div>';
+            return;
+        } else {
+            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay competidores registrados en esta categoría.</div>';
+            return;
+        }
     }
 
     const phases = ['Heat', 'Quarter-Final', 'Semi-Final', 'Final'];
