@@ -218,11 +218,24 @@ function setupNavigation() {
 
 // Global helper for simple direct navigation (e.g. from stat cards)
 window.navigateTo = function(viewName) {
-    ui.navItems.forEach(nav => {
-        if (nav.dataset.view === viewName) {
-            nav.click();
-        }
-    });
+    const targetNav = Array.from(ui.navItems).find(n => n.dataset.view === viewName);
+    if (!targetNav) return;
+
+    // Remove active classes
+    ui.navItems.forEach(nav => nav.classList.remove('active'));
+    ui.views.forEach(view => view.classList.remove('active'));
+    
+    // Add active class
+    targetNav.classList.add('active');
+    const targetViewId = 'view-' + viewName;
+    const targetView = document.getElementById(targetViewId);
+    if(targetView) targetView.classList.add('active');
+    
+    // Call render
+    if (viewName === 'dashboard') renderDashboard();
+    if (viewName === 'skaters') renderSkaters();
+    if (viewName === 'battles') renderBattles();
+    if (viewName === 'brackets') renderBrackets();
 };
 
 // Event Listeners
