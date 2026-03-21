@@ -226,14 +226,16 @@ function setupNavigation() {
         });
     });
 
-    // Dashboard shortcuts (and any other element with data-navigate)
-    document.querySelectorAll('.clickable[data-navigate]').forEach(item => {
-        item.addEventListener('click', (e) => {
+    // Dashboard shortcuts (and any other element with data-navigate) using Event Delegation
+    document.body.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-navigate]');
+        if (target) {
             e.preventDefault();
-            window.navigateTo(item.dataset.navigate);
-        });
+            window.navigateTo(target.dataset.navigate);
+        }
     });
 }
+
 
 // Event Listeners
 function setupEventListeners() {
