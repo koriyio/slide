@@ -216,6 +216,15 @@ function setupNavigation() {
     });
 }
 
+// Global helper for simple direct navigation (e.g. from stat cards)
+window.navigateTo = function(viewName) {
+    ui.navItems.forEach(nav => {
+        if (nav.dataset.view === viewName) {
+            nav.click();
+        }
+    });
+};
+
 // Event Listeners
 function setupEventListeners() {
     // Modal Toggles
