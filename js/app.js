@@ -193,33 +193,11 @@ function applyRoleRestrictions() {
     }
 }
 
-// Navigation Logic
-function setupNavigation() {
-    ui.navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            // Remove active classes
-            ui.navItems.forEach(nav => nav.classList.remove('active'));
-            ui.views.forEach(view => view.classList.remove('active'));
-            
-            // Add active class to clicked item & target view
-            item.classList.add('active');
-            const targetViewId = 'view-' + item.dataset.view;
-            document.getElementById(targetViewId).classList.add('active');
-            
-            // Re-render when switching views
-            if (item.dataset.view === 'dashboard') renderDashboard();
-            if (item.dataset.view === 'skaters') renderSkaters();
-            if (item.dataset.view === 'battles') renderBattles();
-            if (item.dataset.view === 'brackets') renderBrackets();
-        });
-    });
-}
-
-// Global helper for simple direct navigation (e.g. from stat cards)
+// Global helper for simple direct navigation
 window.navigateTo = function(viewName) {
     const targetNav = Array.from(ui.navItems).find(n => n.dataset.view === viewName);
-    if (!targetNav) return;
+    // If nav doesn't exist or is explicitly hidden due to role restrictions, abort
+    if (!targetNav || targetNav.style.display === 'none') return;
 
     // Remove active classes
     ui.navItems.forEach(nav => nav.classList.remove('active'));
@@ -237,6 +215,25 @@ window.navigateTo = function(viewName) {
     if (viewName === 'battles') renderBattles();
     if (viewName === 'brackets') renderBrackets();
 };
+
+// Navigation Logic
+function setupNavigation() {
+    // Sidebar items
+    ui.navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.navigateTo(item.dataset.view);
+        });
+    });
+
+    // Dashboard shortcuts (and any other element with data-navigate)
+    document.querySelectorAll('.clickable[data-navigate]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.navigateTo(item.dataset.navigate);
+        });
+    });
+}
 
 // Event Listeners
 function setupEventListeners() {
