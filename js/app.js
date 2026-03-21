@@ -80,6 +80,9 @@ function init() {
     setupLogin();
     setupNavigation();
     setupEventListeners();
+    // Forzar que el navegador no restaure opciones cacheadas al reiniciar la app (F5)
+    ui.battlesCategorySelect.value = '';
+    ui.bracketsCategorySelect.value = '';
     populateCategories();
     populateTricks();
     setupTrickSearch();
@@ -271,15 +274,38 @@ function setupEventListeners() {
 
     ui.btnGenerateHeats.onclick = () => {
         const catId = ui.battlesCategorySelect.value;
-        if (!catId) return showToast('Selecciona una categoría primero', true);
+        
+        if (catId) {
+            const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
+            if (skatersCount < 3) return showToast('Se necesitan al menos 3 patinadores para hacer grupos', true);
 
-        const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
-        if (skatersCount < 3) return showToast('Se necesitan al menos 3 patinadores para hacer grupos', true);
-
-        if (confirm(`Se van a recargar todos los grupos para la categoría seleccionada. ¿Estás seguro?`)) {
-            window.db.generateHeats(catId);
-            // El render() ocurrirá automáticamente cuando el servidor responda con 'db-update'
-            showToast('Generando grupos en el servidor...');
+            if (confirm(`Se van a recargar todos los grupos para la categoría seleccionada. ¿Estás seguro?`)) {
+                window.db.generateHeats(catId);
+                showToast('Generando grupos en el servidor...');
+            }
+        } else {
+            const categories = window.db.getCategories();
+            let generatedAny = false;
+            let insufficientAny = false;
+            
+            if (confirm(`Se van a generar los grupos para TODAS las categorías. ¿Estás seguro?`)) {
+                categories.forEach(cat => {
+                    const skatersCount = window.db.getSkaters().filter(s => s.categoryId === cat.id).length;
+                    if (skatersCount >= 3) {
+                        window.db.generateHeats(cat.id);
+                        generatedAny = true;
+                    } else if (skatersCount > 0) {
+                        insufficientAny = true;
+                    }
+                });
+                
+                if (generatedAny) {
+                    showToast('Generando grupos para todas las categorías...');
+                } else {
+                    if (insufficientAny) showToast('No hay suficientes patinadores (min 3) en ninguna categoría con inscritos', true);
+                    else showToast('No hay patinadores inscritos en ninguna categoría', true);
+                }
+            }
         }
     };
 
@@ -507,8 +533,8 @@ function populateCategories() {
     const currentBracketsCat = ui.bracketsCategorySelect.value;
 
     ui.categorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
-    ui.battlesCategorySelect.innerHTML = '';
-    ui.bracketsCategorySelect.innerHTML = '';
+    ui.battlesCategorySelect.innerHTML = '<option value="">Todas las categorías</option>';
+    ui.bracketsCategorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
 
     cats.forEach(c => {
         // Form Modal
@@ -796,16 +822,22 @@ function renderBattles() {
 }
 
 function renderBattlesByCategory(battles, allSkaters) {
-    const phases = ['Heat', 'Quarter-Final', 'Semi-Final', 'Final'];
+    const phases = ['Preliminar', 'Cuartos', 'Semifinal', 'Final'];
+    const altPhases = {
+        'Preliminar': ['Preliminar', 'Heat'],
+        'Cuartos': ['Cuartos', 'Quarter-Final'],
+        'Semifinal': ['Semifinal', 'Semi-Final'],
+        'Final': ['Final']
+    };
 
     phases.forEach(phase => {
-        const phaseBattles = battles.filter(b => b.phase === phase);
+        const phaseBattles = battles.filter(b => altPhases[phase].includes(b.phase));
         if (phaseBattles.length === 0) return;
 
         // Visual separator for phases
         const phaseTitle = document.createElement('h3');
         phaseTitle.style.cssText = 'grid-column: 1 / -1; color: var(--primary); margin-top: 1rem; margin-bottom: 0.5rem; text-transform: uppercase; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem;';
-        phaseTitle.innerHTML = `<i class="ph ph-git-branch"></i> ${phase}s`;
+        phaseTitle.innerHTML = `<i class="ph ph-git-branch"></i> ${phase}`;
         ui.battlesContainer.appendChild(phaseTitle);
 
         phaseBattles.forEach(battle => {
@@ -826,9 +858,16 @@ function renderBattlesByCategory(battles, allSkaters) {
                 </span>`;
             }
 
+            const dbCategories = window.db.getDB().categories || [];
+            const catInfo = dbCategories.find(c => c.id === battle.categoryId);
+            const catName = catInfo ? catInfo.name : '';
+
             let header = `
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:0.8rem;">
-                    <h3 style="font-size:1.1rem; color:var(--primary); margin:0;">${battle.phase} ${battle.heatNumber}</h3>
+                    <div style="display:flex; flex-direction:column; gap:0.2rem;">
+                        <h3 style="font-size:1.1rem; color:var(--primary); margin:0;">${battle.phase} ${battle.heatNumber}</h3>
+                        <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">${catName}</span>
+                    </div>
                     ${statusBadge}
                 </div>
             `;
@@ -1197,28 +1236,44 @@ function renderBrackets() {
         return;
     }
 
-    // Fases soportadas (español)
+    // Fases soportadas (español e inglés clásico)
     const phases = ['Preliminar', 'Cuartos', 'Semifinal', 'Final'];
+    const altPhases = {
+        'Preliminar': ['Preliminar', 'Heat'],
+        'Cuartos': ['Cuartos', 'Quarter-Final'],
+        'Semifinal': ['Semifinal', 'Semi-Final'],
+        'Final': ['Final']
+    };
+    const getBasePhase = (p) => {
+        for(let key in altPhases) {
+            if(altPhases[key].includes(p)) return key;
+        }
+        return 'Preliminar';
+    };
 
     // Verificar si podemos generar siguiente fase
-    const lastPhase = battles.reduce((last, b) => {
-        const phaseIndex = phases.indexOf(b.phase);
-        return phaseIndex > phases.indexOf(last) ? b.phase : last;
+    const lastPhaseBase = battles.reduce((last, b) => {
+        const baseP = getBasePhase(b.phase);
+        const phaseIndex = phases.indexOf(baseP);
+        return phaseIndex > phases.indexOf(last) ? baseP : last;
     }, 'Preliminar');
 
-    const currentBattles = battles.filter(b => b.phase === lastPhase);
+    const currentBattles = battles.filter(b => getBasePhase(b.phase) === lastPhaseBase);
     const uncompleted = currentBattles.some(b => b.status !== 'completed');
-    const isFinal = lastPhase === 'Final';
+    const isFinal = lastPhaseBase === 'Final';
+    
+    // Obtenemos el ID de categoría de la primera batalla en caso de estar viendo "Todas las categorías"
+    const targetCatId = catId || (battles.length > 0 ? battles[battles.length-1].categoryId : '');
 
     let nextPhaseBtnHtml = '';
-    if (!uncompleted && !isFinal && currentBattles.length > 0) {
-        nextPhaseBtnHtml = `<button class="btn-primary" onclick="triggerNextPhase('${catId}')" style="margin-bottom:1rem;"><i class="ph ph-fast-forward"></i> Generar Siguiente Ronda</button>`;
+    if (!uncompleted && !isFinal && currentBattles.length > 0 && targetCatId) {
+        nextPhaseBtnHtml = `<button class="btn-primary" onclick="triggerNextPhase('${targetCatId}')" style="margin-bottom:1rem;"><i class="ph ph-fast-forward"></i> Generar Siguiente Ronda</button>`;
     }
 
     ui.bracketContainer.innerHTML = nextPhaseBtnHtml;
 
     phases.forEach(phase => {
-        const phaseBattles = battles.filter(b => b.phase === phase);
+        const phaseBattles = battles.filter(b => altPhases[phase].includes(b.phase));
         if (phaseBattles.length === 0) return;
 
         const phaseSection = document.createElement('div');

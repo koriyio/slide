@@ -210,7 +210,7 @@ class SlideStorage {
             newBattles.push({
                 id: Date.now() + idx + Math.floor(Math.random() * 1000),
                 categoryId: categoryId,
-                phase: 'Heat',
+                phase: 'Preliminar',
                 heatNumber: idx + 1,
                 status: 'pending',
                 skaters: grp.members.map(m => ({
