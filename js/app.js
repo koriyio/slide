@@ -196,6 +196,29 @@ function applyRoleRestrictions() {
     }
 }
 
+// Global helper for simple direct navigation
+window.navigateTo = function(viewName) {
+    const targetNav = Array.from(ui.navItems).find(n => n.dataset.view === viewName);
+    // If nav doesn't exist or is explicitly hidden due to role restrictions, abort
+    if (!targetNav || targetNav.style.display === 'none') return;
+
+    // Remove active classes
+    ui.navItems.forEach(nav => nav.classList.remove('active'));
+    ui.views.forEach(view => view.classList.remove('active'));
+    
+    // Add active class
+    targetNav.classList.add('active');
+    const targetViewId = 'view-' + viewName;
+    const targetView = document.getElementById(targetViewId);
+    if(targetView) targetView.classList.add('active');
+    
+    // Call render
+    if (viewName === 'dashboard') renderDashboard();
+    if (viewName === 'skaters') renderSkaters();
+    if (viewName === 'battles') renderBattles();
+    if (viewName === 'brackets') renderBrackets();
+};
+
 // Navigation Logic
 function setupNavigation() {
     // Sidebar items
@@ -216,28 +239,7 @@ function setupNavigation() {
     });
 }
 
-// Global helper for simple direct navigation
-window.navigateTo = function (viewName) {
-    const targetNav = Array.from(ui.navItems).find(n => n.dataset.view === viewName);
-    // If nav doesn't exist or is explicitly hidden due to role restrictions, abort
-    if (!targetNav || targetNav.style.display === 'none') return;
 
-    // Remove active classes
-    ui.navItems.forEach(nav => nav.classList.remove('active'));
-    ui.views.forEach(view => view.classList.remove('active'));
-
-    // Add active class
-    targetNav.classList.add('active');
-    const targetViewId = 'view-' + viewName;
-    const targetView = document.getElementById(targetViewId);
-    if (targetView) targetView.classList.add('active');
-
-    // Call render
-    if (viewName === 'dashboard') renderDashboard();
-    if (viewName === 'skaters') renderSkaters();
-    if (viewName === 'battles') renderBattles();
-    if (viewName === 'brackets') renderBrackets();
-};
 
 // Event Listeners
 function setupEventListeners() {
@@ -777,6 +779,7 @@ function renderBattles() {
     const allSkaters = window.db.getSkaters();
     let battles = [];
 
+<<<<<<< HEAD
     // Si hay categoría seleccionada, filtrar por ella. Si no, mostrar TODAS las batallas
     if (catId) {
         battles = window.db.getBattlesByCategory(catId);
@@ -788,6 +791,21 @@ function renderBattles() {
     if (battles.length === 0) {
         ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas generadas aún. Presiona "Generar Grupos" para crear nuevas.</div>';
         return;
+=======
+    if(battles.length === 0) {
+        const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
+        if (skatersCount >= 3) {
+            window.db.generateHeats(catId);
+            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">Generando grupos automáticamente... <i class="ph ph-spinner ph-spin"></i></div>';
+            return;
+        } else if (skatersCount > 0) {
+            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">No hay suficientes competidores para hacer grupos. Se necesitan al menos 3.</div>';
+            return;
+        } else {
+            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay competidores registrados en esta categoría.</div>';
+            return;
+        }
+>>>>>>> main
     }
 
     // Agrupar batallas por categoría para mostrar cuando se muestran todas
