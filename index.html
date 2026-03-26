@@ -289,14 +289,14 @@
     <!-- Modals -->
     <!-- Modal: Jueceo de Truco -->
     <div id="modal-judge" class="modal hidden">
-        <div class="modal-content" style="max-width:500px;">
+        <div class="modal-content" style="max-width:420px;">
             <div class="modal-header">
-                <h3>Registrar Truco</h3>
+                <h3 style="font-size:1.05rem;">Registrar Truco</h3>
                 <button class="btn-close" id="btn-close-judge"><i class="ph ph-x"></i></button>
             </div>
-            <div style="margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid var(--border);">
-                <p style="color:var(--text-muted); font-size:0.9rem;">Patinador</p>
-                <h4 id="judge-skater-name" style="font-size:1.2rem; color:var(--primary);">Nombre Patinador</h4>
+            <div class="judge-header-compact">
+                <p style="color:var(--text-muted); font-size:0.75rem;">Patinador</p>
+                <h4 id="judge-skater-name" style="color:var(--primary);">Nombre Patinador</h4>
             </div>
             <form id="form-judge">
                 <input type="hidden" id="judge-slot-index" value="0">
@@ -306,10 +306,10 @@
                     <label>Buscar Slide</label>
                     <div style="position:relative;">
                         <i class="ph ph-magnifying-glass"
-                            style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1.2rem; pointer-events:none;"></i>
+                            style="position:absolute; left:0.85rem; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1.05rem; pointer-events:none;"></i>
                         <input type="text" id="judge-trick-search"
                             placeholder="Escribe para buscar... (ej: Soul, Magic)" autocomplete="off"
-                            style="padding-left:3rem;">
+                            style="padding-left:2.7rem;">
                         <!-- Lista de sugerencias -->
                         <div id="trick-suggestions"
                             style="position:absolute; top:100%; left:0; right:0; max-height:250px; overflow-y:auto; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); z-index:100; display:none; box-shadow:0 8px 30px rgba(0,0,0,0.4);">
@@ -322,29 +322,29 @@
                     <select id="judge-trick-select" style="max-height:200px; overflow-y:auto;">
                         <!-- Dynamic Tricks -->
                     </select>
-                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">
+                    <p style="font-size:0.7rem; color:var(--text-muted); margin-top:0.2rem;">
                         <i class="ph ph-info"></i> Escribe arriba para filtrar o selecciona de la lista
                     </p>
                 </div>
                 <div class="form-group"
-                    style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(239, 68, 68, 0.08); padding:0.5rem 0.8rem; border-radius:var(--radius-sm); border:1px solid rgba(239, 68, 68, 0.2); cursor:pointer;"
+                    style="display:inline-flex; align-items:center; gap:0.3rem; background:rgba(239, 68, 68, 0.08); padding:0.4rem 0.6rem; border-radius:var(--radius-sm); border:1px solid rgba(239, 68, 68, 0.2); cursor:pointer;"
                     onclick="const cb = document.getElementById('judge-is-fail'); if(event.target !== cb) cb.click();">
-                    <input type="checkbox" id="judge-is-fail" style="width:15px; height:15px; cursor:pointer;">
+                    <input type="checkbox" id="judge-is-fail" style="width:14px; height:14px; cursor:pointer;">
                     <label for="judge-is-fail"
-                        style="margin:0; color:var(--danger); font-weight:600; font-size:0.85rem; cursor:pointer;"
+                        style="margin:0; color:var(--danger); font-weight:600; font-size:0.8rem; cursor:pointer;"
                         onclick="event.preventDefault()">Falla / Caída (0 Pts)</label>
                 </div>
                 <!-- Slider de Distancia -->
-                <div class="form-group" style="margin-top: 1.5rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <div class="form-group" style="margin-top: 0.8rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
                         <label style="margin:0;">Distancia del Derrape</label>
                         <span id="judge-distance-val"
-                            style="background:var(--primary); color:white; padding:0.2rem 0.6rem; border-radius:12px; font-weight:bold; font-size:0.9rem;">2.5m</span>
+                            style="background:var(--primary); color:white; padding:0.2rem 0.5rem; border-radius:12px; font-weight:bold; font-size:0.85rem;">2.5m</span>
                     </div>
                     <input type="range" id="judge-distance" min="2.5" max="10" step="0.5" value="2.5"
                         style="width:100%; cursor:pointer; accent-color:var(--primary);">
                     <div
-                        style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">
+                        style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted); margin-top:0.25rem;">
                         <span>2.5m</span>
                         <span>10m</span>
                     </div>
@@ -366,17 +366,17 @@
                 </div>
 
                 <!-- Selector de Stop (Bonificación) -->
-                <div class="form-group" style="margin-top: 1.5rem;">
+                <div class="form-group" style="margin-top: 0.8rem;">
                     <label style="display:flex; align-items:center; gap:0.5rem; color:var(--accent); font-weight:700;">
-                        <i class="ph-fill ph-hand-palm" style="font-size:1.2rem;"></i>
+                        <i class="ph-fill ph-hand-palm" style="font-size:1.1rem;"></i>
                         Bonificación de Stop
                     </label>
-                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.5rem; margin-top:0.5rem;">
+                    <div class="stop-bonus-grid-compact">
                         <label class="stop-option" style="cursor:pointer; position:relative;">
                             <input type="radio" name="judge-stop-level" value="0" checked hidden>
                             <div
-                                style="background:var(--bg-surface); border:2px solid var(--border); border-radius:var(--radius-sm); padding:0.8rem 0.4rem; text-align:center; transition:all 0.2s;">
-                                <i class="ph ph-hand" style="font-size:1.5rem; color:var(--text-muted);"></i>
+                                style="background:var(--bg-surface); border:2px solid var(--border); border-radius:var(--radius-sm);  text-align:center; transition:all 0.2s;">
+                                <i class="ph ph-hand" style="color:var(--text-muted);"></i>
                                 <p
                                     style="font-size:0.7rem; margin:0.3rem 0 0 0; color:var(--text-muted); font-weight:600;">
                                     Sin Stop</p>
@@ -386,8 +386,8 @@
                         <label class="stop-option" style="cursor:pointer; position:relative;">
                             <input type="radio" name="judge-stop-level" value="1" hidden>
                             <div
-                                style="background:rgba(251, 191, 36, 0.1); border:2px solid #F59E0B; border-radius:var(--radius-sm); padding:0.8rem 0.4rem; text-align:center; transition:all 0.2s;">
-                                <i class="ph-fill ph-hand" style="font-size:1.5rem; color:#F59E0B;"></i>
+                                style="background:rgba(251, 191, 36, 0.1); border:2px solid #F59E0B; border-radius:var(--radius-sm); text-align:center; transition:all 0.2s;">
+                                <i class="ph-fill ph-hand" style="color:#F59E0B;"></i>
                                 <p
                                     style="font-size:0.7rem; margin:0.3rem 0 0 0; color:var(--text-main); font-weight:700;">
                                     Nivel 1</p>
@@ -398,8 +398,8 @@
                         <label class="stop-option" style="cursor:pointer; position:relative;">
                             <input type="radio" name="judge-stop-level" value="2" hidden>
                             <div
-                                style="background:rgba(245, 158, 11, 0.15); border:2px solid #F59E0B; border-radius:var(--radius-sm); padding:0.8rem 0.4rem; text-align:center; transition:all 0.2s;">
-                                <i class="ph-fill ph-hand" style="font-size:1.5rem; color:#D97706;"></i>
+                                style="background:rgba(245, 158, 11, 0.15); border:2px solid #F59E0B; border-radius:var(--radius-sm); text-align:center; transition:all 0.2s;">
+                                <i class="ph-fill ph-hand" style="color:#D97706;"></i>
                                 <p
                                     style="font-size:0.7rem; margin:0.3rem 0 0 0; color:var(--text-main); font-weight:700;">
                                     Nivel 2</p>
@@ -407,36 +407,36 @@
                                     pts</p>
                             </div>
                         </label>
-                        <label class="stop-option" style="cursor:pointer; position:relative; grid-column:span 3;">
+                        <label class="stop-option" style="cursor:pointer; position:relative;">
                             <input type="radio" name="judge-stop-level" value="3" hidden>
                             <div
-                                style="background:rgba(213, 43, 30, 0.1); border:2px solid var(--accent); border-radius:var(--radius-sm); padding:0.8rem 0.4rem; text-align:center; transition:all 0.2s;">
-                                <i class="ph-fill ph-hand" style="font-size:1.5rem; color:var(--accent);"></i>
+                                style="background:rgba(213, 43, 30, 0.1); border:2px solid var(--accent); border-radius:var(--radius-sm); text-align:center; transition:all 0.2s;">
+                                <i class="ph-fill ph-hand" style="color:var(--accent);"></i>
                                 <p
                                     style="font-size:0.7rem; margin:0.3rem 0 0 0; color:var(--text-main); font-weight:700;">
-                                    Nivel 3 - Perfecto</p>
+                                    Nivel 3</p>
                                 <p
                                     style="font-size:0.65rem; margin:0.2rem 0 0 0; color:var(--accent); font-weight:700;">
                                     +6 pts</p>
                             </div>
                         </label>
                     </div>
-                    <p style="font-size:0.7rem; color:var(--text-muted); margin-top:0.5rem;">
+                    <p style="font-size:0.65rem; color:var(--text-muted); margin-top:0.4rem;">
                         <i class="ph ph-info"></i> El stop solo aplica si el truco no es falla
                     </p>
                 </div>
 
                 <!-- Info de Combo (Dinámico) -->
                 <div id="judge-combo-info"
-                    style="display:none; margin-top:1rem; padding:0.8rem; background:rgba(245, 158, 11, 0.1); border:2px solid #F59E0B; border-radius:var(--radius-sm);">
-                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
-                        <i class="ph-fill ph-fire" style="color:#F59E0B; font-size:1.2rem;"></i>
-                        <strong style="color:#F59E0B; font-size:0.9rem;">¡COMBO ACTIVADO!</strong>
+                    style="display:none; margin-top:0.8rem; padding:0.6rem; background:rgba(245, 158, 11, 0.1); border:2px solid #F59E0B; border-radius:var(--radius-sm);">
+                    <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem;">
+                        <i class="ph-fill ph-fire" style="color:#F59E0B; font-size:1.1rem;"></i>
+                        <strong style="color:#F59E0B; font-size:0.85rem;">¡COMBO ACTIVADO!</strong>
                     </div>
-                    <p style="font-size:0.8rem; color:var(--text-main); margin:0;">
+                    <p style="font-size:0.75rem; color:var(--text-main); margin:0;">
                         <span id="combo-families-display">F1 + F2</span>
                     </p>
-                    <p style="font-size:0.75rem; color:var(--text-muted); margin:0.3rem 0 0 0;">
+                    <p style="font-size:0.7rem; color:var(--text-muted); margin:0.25rem 0 0 0;">
                         Bonus: <strong id="combo-bonus-value" style="color:#F59E0B;">+0 pts</strong>
                     </p>
                 </div>
