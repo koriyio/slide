@@ -315,6 +315,11 @@ io.on('connection', (socket) => {
         const stopBonus = calculateStopBonus(trickPerformed);
         trickPerformed.stopBonus = stopBonus;
 
+        // Actualizar finalScore con el stop bonus
+        if (!trickPerformed.isFail && trickPerformed.baseScore !== undefined) {
+            trickPerformed.finalScore = (trickPerformed.baseScore || 0) + (trickPerformed.adjustment || 0) + (trickPerformed.distanceBonus || 0) + stopBonus;
+        }
+
         // Guardar en el slot específico
         trickPerformed.judgeRole = role;
         skater.judging[role][slotIndex] = trickPerformed;

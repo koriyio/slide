@@ -823,34 +823,34 @@ function renderBattles() {
     }
 
     // Agrupar batallas por categoría para mostrar cuando se muestran todas
-const battlesByCategory = {};
-battles.forEach(battle => {
-    if (!battlesByCategory[battle.categoryId]) {
-        battlesByCategory[battle.categoryId] = [];
-    }
-    battlesByCategory[battle.categoryId].push(battle);
-});
-
-// Si hay categoría seleccionada, renderizar normalmente
-if (catId) {
-    renderBattlesByCategory(battles, allSkaters);
-    checkAndShowNextPhaseButton(catId);
-} else {
-    // Renderizar todas las batallas agrupadas por categoría
-    const categories = window.db.getCategories();
-    Object.keys(battlesByCategory).forEach(categoryId => {
-        const category = categories.find(c => c.id === categoryId);
-        const categoryName = category ? category.name : categoryId;
-
-        // Category separator
-        const categoryTitle = document.createElement('h3');
-        categoryTitle.style.cssText = 'grid-column: 1 / -1; color: var(--accent); margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.2rem; text-transform: uppercase; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;';
-        categoryTitle.innerHTML = `<i class="ph ph-award"></i> ${categoryName}`;
-        ui.battlesContainer.appendChild(categoryTitle);
-
-        renderBattlesByCategory(battlesByCategory[categoryId], allSkaters);
+    const battlesByCategory = {};
+    battles.forEach(battle => {
+        if (!battlesByCategory[battle.categoryId]) {
+            battlesByCategory[battle.categoryId] = [];
+        }
+        battlesByCategory[battle.categoryId].push(battle);
     });
-}
+
+    // Si hay categoría seleccionada, renderizar normalmente
+    if (catId) {
+        renderBattlesByCategory(battles, allSkaters);
+        checkAndShowNextPhaseButton(catId);
+    } else {
+        // Renderizar todas las batallas agrupadas por categoría
+        const categories = window.db.getCategories();
+        Object.keys(battlesByCategory).forEach(categoryId => {
+            const category = categories.find(c => c.id === categoryId);
+            const categoryName = category ? category.name : categoryId;
+
+            // Category separator
+            const categoryTitle = document.createElement('h3');
+            categoryTitle.style.cssText = 'grid-column: 1 / -1; color: var(--accent); margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.2rem; text-transform: uppercase; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;';
+            categoryTitle.innerHTML = `<i class="ph ph-award"></i> ${categoryName}`;
+            ui.battlesContainer.appendChild(categoryTitle);
+
+            renderBattlesByCategory(battlesByCategory[categoryId], allSkaters);
+        });
+    }
 }
 
 function renderBattlesByCategory(battles, allSkaters) {
@@ -1321,6 +1321,14 @@ function renderActiveBattle() {
                 let droppedBadge = isDropped ? '<span style="position:absolute; bottom: -8px; right: 5px; background:var(--text-muted); color:var(--bg-app); font-size:0.6rem; font-weight:bold; padding:2px 5px; border-radius:4px; letter-spacing:0.5px; z-index:2;">DESCARTADO</span>' : '';
                 let countedBadge = isCounted && slotsWithScores.length > (maxSlots === 5 ? 4 : 3) ? '<i class="ph-fill ph-check-circle" style="color:var(--accent); font-size:1.1rem; margin-left:0.4rem;" title="Puntaje contabilizado"></i>' : '';
 
+                // Stop bonus display
+                let stopBonusText = '';
+                if (slide.stopLevel && slide.stopLevel > 0 && !slide.isFail) {
+                    const stopLabels = { 1: 'Nivel 1', 2: 'Nivel 2', 3: 'Nivel 3' };
+                    const stopBonus = slide.stopBonus || 0;
+                    stopBonusText = `<span style="color:#F59E0B; font-weight:600;"><i class="ph-fill ph-hand-palm"></i> Stop ${stopLabels[slide.stopLevel]} (+${stopBonus})</span>`;
+                }
+
                 slotsHtml += `
                     <div style="background:var(--bg-app); border:1px solid var(--border); border-left:4px solid ${badgeColor}; padding:0.8rem; border-radius:var(--radius-sm); position:relative; cursor:pointer; transition:all 0.2s; margin-bottom:0.4rem; ${opacityStyle}"
                          onclick="openJudgeModal(${sInfo.id}, '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})">
@@ -1332,10 +1340,11 @@ function renderActiveBattle() {
                                 ${countedBadge}
                             </div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">
                             <span>Base: ${slide.baseScore} | Dist: ${dist.toFixed(1)}m</span>
                             <span>${adjText ? 'Adj: ' + adjText : ''}</span>
                         </div>
+                        ${stopBonusText ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">${stopBonusText}</div>` : ''}
                         <button onclick="event.stopPropagation(); deleteRecordedTrick(${sInfo.id}, ${i})" style="position:absolute; top: -5px; right: -5px; background:var(--danger); color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:5;"><i class="ph ph-x"></i></button>
                     </div>
                 `;
