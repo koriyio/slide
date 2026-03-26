@@ -11,14 +11,11 @@ const crypto = require('crypto');
 const app = express();
 
 // Configuración de CORS para producción
-const allowedOrigins = process.env.CORS_ORIGIN
-    ? [process.env.CORS_ORIGIN, 'http://localhost:3005', 'http://127.0.0.1:3005']
-    : ['http://localhost:3005', 'http://127.0.0.1:3005'];
-
+// En Render, permitimos cualquier origen que coincida o configuramos según ENV
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: process.env.NODE_ENV === 'production' ? allowedOrigins : true,
+        origin: process.env.NODE_ENV === 'production' ? (process.env.CORS_ORIGIN || true) : true,
         methods: ['GET', 'POST'],
         credentials: true
     }
@@ -112,12 +109,17 @@ io.on('connection', (socket) => {
 
     // Login con validación de credenciales
     socket.on('login', (credentials, callback) => {
-        const { role, username, password } = credentials || {};
+        let { role, username, password } = credentials || {};
 
-        // Validar que el rol exista
+        // Si no se proporcionó rol, intentar detectarlo por el nombre de usuario de la configuración
+        if (!role && username) {
+            role = Object.keys(AUTH_CONFIG).find(r => AUTH_CONFIG[r].user === username);
+        }
+
+        // Validar que el rol sea válido
         if (!role || !AUTH_CONFIG[role]) {
-            console.warn(`[AUDIT] Intento de login con rol inválido: ${role} - IP: ${socket.handshake.address}`);
-            return callback({ success: false, message: 'Rol inválido' });
+            console.warn(`[AUDIT] Intento de login fallido: usuario no reconocido "${username}" - IP: ${socket.handshake.address}`);
+            return callback({ success: false, message: 'Usuario o rol inválido' });
         }
 
         // Validar credenciales

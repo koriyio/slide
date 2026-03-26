@@ -100,14 +100,13 @@ function setupAuth() {
             const u = ui.authUsername.value.trim();
             const p = ui.authPassword.value.trim();
 
-            let targetRole = null;
-
-            // Determinar rol basado en credenciales ingresadas
-            if (u === 'Slide' && p === 'slide2026') {
+            // Determinar rol basado en el nombre de usuario (sin validar password en el cliente)
+            const userLower = u.toLowerCase();
+            if (userLower === 'slide' || userLower === 'admin' || userLower === 'juez1') {
                 targetRole = 'Juez 1';
-            } else if (u.toLowerCase() === 'juez2' && p === 'slide') {
+            } else if (userLower === 'juez2') {
                 targetRole = 'Juez 2';
-            } else if (u.toLowerCase() === 'juez3' && p === 'slide') {
+            } else if (userLower === 'juez3') {
                 targetRole = 'Juez 3';
             }
 
@@ -822,9 +821,8 @@ function renderBattles() {
         ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas generadas aún. Selecciona una categoría para empezar.</div>';
         return;
     }
-}
 
-// Agrupar batallas por categoría para mostrar cuando se muestran todas
+    // Agrupar batallas por categoría para mostrar cuando se muestran todas
 const battlesByCategory = {};
 battles.forEach(battle => {
     if (!battlesByCategory[battle.categoryId]) {
