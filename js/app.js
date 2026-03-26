@@ -487,15 +487,16 @@ function setupEventListeners() {
                         firstName: p.first,
                         lastName: p.last,
                         categoryId: 'jun-f',
-                        ranking: i + 1
+                        ranking: i + 1,
+                        seedNumber: i + 1
                     };
                     window.db.socket.emit('add-skater', skater);
                 });
                 showToast('12 participantes agregados');
 
-                // Generar heats después de 800ms
+                // Generar heats después de 800ms usando la función del storage
                 setTimeout(() => {
-                    window.db.socket.emit('generate-heats', { categoryId: 'jun-f', heatSize: 3 });
+                    window.db.generateHeats('jun-f');
                     showToast('Heats preliminares generados');
 
                     setTimeout(() => {
