@@ -107,7 +107,7 @@ io.on('connection', (socket) => {
 
         // Si no se proporcionó rol, intentar detectarlo por el nombre de usuario de la configuración
         if (!role && username) {
-            role = Object.keys(AUTH_CONFIG).find(r => AUTH_CONFIG[r].user === username);
+            role = Object.keys(AUTH_CONFIG).find(r => AUTH_CONFIG[r].user.toLowerCase() === username.toLowerCase());
         }
 
         // Validar que el rol sea válido
@@ -116,11 +116,11 @@ io.on('connection', (socket) => {
             return callback({ success: false, message: 'Usuario o rol inválido' });
         }
 
-        // Validar credenciales
+        // Validar credenciales (case-insensitive para usuario, exacta para password)
         const expectedUser = AUTH_CONFIG[role].user;
         const expectedPass = AUTH_CONFIG[role].pass;
 
-        if (username !== expectedUser || password !== expectedPass) {
+        if (username.toLowerCase() !== expectedUser.toLowerCase() || password !== expectedPass) {
             console.warn(`[AUDIT] Credenciales incorrectas para ${role} - IP: ${socket.handshake.address}`);
             return callback({ success: false, message: 'Credenciales incorrectas' });
         }
