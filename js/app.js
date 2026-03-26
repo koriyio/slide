@@ -373,10 +373,13 @@ function setupEventListeners() {
         const distance = document.getElementById('judge-distance').value;
         const slotIdx = parseInt(document.getElementById('judge-slot-index').value);
 
-        if (window.db.saveTrick(currentBattleId, currentJudgeSkaterId, trickId, adjustment, slotIdx, isFail, distance)) {
+        // Obtener nivel de stop seleccionado
+        const stopLevel = parseInt(document.querySelector('input[name="judge-stop-level"]:checked')?.value || 0);
+
+        if (window.db.saveTrick(currentBattleId, currentJudgeSkaterId, trickId, adjustment, slotIdx, isFail, distance, stopLevel)) {
             ui.modalJudge.classList.add('hidden');
             renderActiveBattle();
-            showToast('Truco registrado');
+            showToast('Truco registrado' + (stopLevel > 0 ? ` con Stop Nivel ${stopLevel}` : ''));
         } else {
             showToast('Error al registrar', true);
         }
@@ -1023,6 +1026,11 @@ function openJudgeModal(skaterId, skaterName, slotIndex) {
     if (slider) slider.value = 2.5;
     if (sliderVal) sliderVal.innerText = '2.5m';
 
+    // Resetear selector de Stop
+    document.querySelectorAll('input[name="judge-stop-level"]').forEach(radio => {
+        radio.checked = radio.value === '0';
+    });
+
     // Limpiar el buscador y recargar la lista completa de trucos
     const searchInput = document.getElementById('judge-trick-search');
     if (searchInput) {
@@ -1030,7 +1038,97 @@ function openJudgeModal(skaterId, skaterName, slotIndex) {
         populateTricks('');
     }
 
+    // Ocultar info de combo inicialmente
+    document.getElementById('judge-combo-info').style.display = 'none';
+
+    // Actualizar contador de familias y combo preview
+    updateFamilyCounterAndCombo(skaterId, slotIndex);
+
     ui.modalJudge.classList.remove('hidden');
+}
+
+// Actualizar contador de familias y vista previa de combo
+function updateFamilyCounterAndCombo(skaterId, currentSlotIndex) {
+    const db = window.db.getDB();
+    const battle = db.battles.find(b => b.id === currentBattleId);
+    if (!battle) return;
+
+    const skater = battle.skaters.find(s => s.skaterId === skaterId);
+    if (!skater) return;
+
+    // Obtener trucos actuales del juez actual en otros slots
+    const role = window.db.currentRole;
+    const judging = skater.judging || {};
+    const currentJudgeTricks = judging[role] || [];
+
+    // Contar familias únicas
+    const families = new Set();
+    const familyNames = [];
+
+    currentJudgeTricks.forEach((trick, idx) => {
+        if (trick && trick.trickId !== 'fail' && idx !== currentSlotIndex) {
+            const familyShort = trick.family ? trick.family.match(/^(F\d+)/)?.[1] : null;
+            if (familyShort && !families.has(familyShort)) {
+                families.add(familyShort);
+                familyNames.push(familyShort);
+            }
+        }
+    });
+
+    // Actualizar contador de familias en el modal
+    const comboInfoDiv = document.getElementById('judge-combo-info');
+    const comboFamiliesDisplay = document.getElementById('combo-families-display');
+    const comboBonusValue = document.getElementById('combo-bonus-value');
+
+    // Escuchar cambios en el selector de trucos para mostrar combo preview
+    const trickSelect = document.getElementById('judge-trick-select');
+    const trickSearch = document.getElementById('judge-trick-search');
+
+    function checkCombo() {
+        const selectedTrickId = trickSelect.value;
+        const isFail = document.getElementById('judge-is-fail').checked;
+
+        if (isFail || !selectedTrickId) {
+            comboInfoDiv.style.display = 'none';
+            return;
+        }
+
+        // Obtener familia del truco seleccionado
+        const allTricks = window.db.getTricks();
+        const selectedTrick = allTricks.find(t => t.id === selectedTrickId);
+        if (!selectedTrick) return;
+
+        const selectedFamily = selectedTrick.family.match(/^(F\d+)/)?.[1];
+
+        // Verificar si hay combo
+        const hasDifferentFamily = selectedFamily && familyNames.some(f => f !== selectedFamily);
+
+        if (hasDifferentFamily && familyNames.length > 0) {
+            // Calcular bonus estimado
+            const baseScore1 = currentJudgeTricks.reduce((sum, t) => t && !t.isFail ? sum + (t.baseScore || 0) : sum, 0);
+            const baseScore2 = selectedTrick.baseScore || 0;
+            const totalBase = baseScore1 + baseScore2;
+            const bonus = Math.round(totalBase * 0.5);
+
+            comboFamiliesDisplay.innerText = `${familyNames.join(' + ')} + ${selectedFamily}`;
+            comboBonusValue.innerText = `+${bonus} pts`;
+            comboInfoDiv.style.display = 'block';
+            comboInfoDiv.classList.add('combo-active');
+            setTimeout(() => comboInfoDiv.classList.remove('combo-active'), 500);
+        } else {
+            comboInfoDiv.style.display = 'none';
+        }
+    }
+
+    // Remover listeners previos para evitar duplicados
+    trickSelect?.removeEventListener('change', checkCombo);
+    trickSearch?.removeEventListener('input', checkCombo);
+    document.getElementById('judge-is-fail')?.removeEventListener('change', checkCombo);
+
+    // Agregar listeners
+    trickSelect?.addEventListener('change', checkCombo);
+    trickSearch?.addEventListener('input', checkCombo);
+    document.getElementById('judge-is-fail')?.addEventListener('change', checkCombo);
 }
 
 function renderActiveBattle() {

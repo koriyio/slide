@@ -369,12 +369,13 @@ class SlideStorage {
         ];
     }
 
-    saveTrick(battleId, skaterId, trickId, adjustment, slotIndex, isFail = false, distance = 2.5) {
+    saveTrick(battleId, skaterId, trickId, adjustment, slotIndex, isFail = false, distance = 2.5, stopLevel = 0) {
         if (!this.currentRole) return false;
 
         let performedTrick;
         const adjValue = parseFloat(adjustment) || 0;
         const distValue = parseFloat(distance) || 2.5;
+        const stopLevelInt = parseInt(stopLevel) || 0;
         // Bono por distancia: 1 punto extra por cada 0.5m sobre 2.5m (máx 15 pts en 10m)
         const distanceBonus = Math.max(0, Math.round((distValue - 2.5) / 0.5) * 1);
 
@@ -387,6 +388,8 @@ class SlideStorage {
                 baseScore: 0,
                 distance: distValue,
                 distanceBonus: 0,
+                stopLevel: 0,
+                stopBonus: 0,
                 finalScore: 0,
                 isFail: true,
                 timestamp: new Date().toISOString()
@@ -395,6 +398,7 @@ class SlideStorage {
             const trickBase = this.getTricks().find(t => t.id === trickId);
             if (!trickBase) return false;
 
+            // El cálculo finalScore se hace en el servidor ahora (con combos y stops)
             const finalScore = isFail ? 0 : Math.max(0, trickBase.baseScore + adjValue + distanceBonus);
             performedTrick = {
                 id: Date.now(),
@@ -404,6 +408,8 @@ class SlideStorage {
                 baseScore: trickBase.baseScore,
                 distance: distValue,
                 distanceBonus: distanceBonus,
+                stopLevel: stopLevelInt,
+                stopBonus: 0, // Se calcula en el servidor
                 finalScore: finalScore,
                 isFail: isFail,
                 timestamp: new Date().toISOString()

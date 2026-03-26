@@ -227,6 +227,57 @@ io.on('connection', (socket) => {
         io.emit('db-update', db);
     });
 
+    // Función helper para obtener familia corta (F1, F2, etc.)
+    function getFamilyShort(familyName) {
+        if (!familyName) return '';
+        const match = familyName.match(/^(F\d+)/);
+        return match ? match[1] : '';
+    }
+
+    // Función para calcular bonificación de combo
+    function calculateComboBonus(tricks) {
+        if (!tricks || tricks.length < 2) return { hasCombo: false, bonus: 0, comboType: null };
+
+        // Filtrar trucos válidos (no nulos, no fallas)
+        const validTricks = tricks.filter(t => t && t.trickId !== 'fail');
+        if (validTricks.length < 2) return { hasCombo: false, bonus: 0, comboType: null };
+
+        // Obtener familias únicas
+        const families = [...new Set(validTricks.map(t => getFamilyShort(t.family)))];
+
+        // Si hay 2 familias distintas, aplicar combo
+        if (families.length >= 2) {
+            // Calcular puntaje base total
+            const baseScore = validTricks.reduce((sum, t) => sum + (t.baseScore || 0), 0);
+            // Multiplicador 1.5x
+            const multiplier = 1.5;
+            const scoreWithMultiplier = baseScore * multiplier;
+            const bonus = Math.round(scoreWithMultiplier - baseScore);
+
+            return {
+                hasCombo: true,
+                bonus: bonus,
+                comboType: 'Doble Familia',
+                multiplier: multiplier
+            };
+        }
+
+        return { hasCombo: false, bonus: 0, comboType: null };
+    }
+
+    // Función para calcular bonificación de Stop
+    function calculateStopBonus(trick) {
+        if (!trick || trick.isFail || !trick.stopLevel) return 0;
+
+        const stopBonuses = {
+            1: 2,  // Stop Nivel 1: +2 pts
+            2: 4,  // Stop Nivel 2: +4 pts
+            3: 6   // Stop Nivel 3: +6 pts
+        };
+
+        return stopBonuses[trick.stopLevel] || 0;
+    }
+
     socket.on('save-trick', ({ battleId, skaterId, trickPerformed, role, slotIndex }) => {
         const battle = db.battles.find(b => b.id === battleId);
         if (!battle) return;
@@ -243,18 +294,59 @@ io.on('connection', (socket) => {
             };
         }
 
+        // Obtener familia del truco si existe
+        if (trickPerformed.trickId && trickPerformed.trickId !== 'fail') {
+            const allTricks = db.tricks || [];
+            const trickData = allTricks.find(t => t.id === trickPerformed.trickId);
+            if (trickData) {
+                trickPerformed.family = trickData.family;
+            }
+        }
+
+        // Calcular bonificación de Stop
+        const stopBonus = calculateStopBonus(trickPerformed);
+        trickPerformed.stopBonus = stopBonus;
+
         // Guardar en el slot específico
         trickPerformed.judgeRole = role;
         skater.judging[role][slotIndex] = trickPerformed;
 
-        // Recalcular promedios en tiempo real para el resultado global (Mejores N derivado de la fase)
+        // Calcular puntaje con combos y bonificaciones
         const calculateJudgeScore = (jRole) => {
             const tricks = skater.judging[jRole] || [];
-            let scores = tricks.map(t => t ? t.finalScore : 0);
+            const validTricks = tricks.filter(t => t !== null);
+
+            if (validTricks.length === 0) return 0;
+
+            // Calcular combo para este slot
+            const comboResult = calculateComboBonus(validTricks);
+
+            // Calcular puntajes individuales con bonificaciones
+            let scores = validTricks.map(t => {
+                if (!t || t.isFail) return 0;
+
+                // Puntaje base + ajuste + distancia
+                let trickScore = (t.baseScore || 0) + (t.adjustment || 0) + (t.distanceBonus || 0);
+
+                // Agregar bono de stop
+                trickScore += calculateStopBonus(t);
+
+                return trickScore;
+            });
+
+            // Aplicar multiplicador de combo si existe
+            if (comboResult.hasCombo && scores.length >= 2) {
+                // El bonus de combo se distribuye proporcionalmente
+                const totalBase = scores.reduce((a, b) => a + b, 0);
+                scores = scores.map(s => s + Math.round(comboResult.bonus / scores.length));
+            }
+
+            // Ordenar y tomar los mejores
             scores.sort((a, b) => b - a);
             const maxToCount = battle.phase === 'Final' ? 4 : 3;
             return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
         };
+
         const j1Total = calculateJudgeScore('Juez 1');
         const j2Total = calculateJudgeScore('Juez 2');
         const j3Total = calculateJudgeScore('Juez 3');

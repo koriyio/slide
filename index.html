@@ -364,6 +364,83 @@
                             style="padding:0.5rem; flex:1;">+1.0</button>
                     </div>
                 </div>
+
+                <!-- Selector de Stop (Bonificación) -->
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label style="display:flex; align-items:center; gap:0.5rem; color:var(--accent); font-weight:700;">
+                        <i class="ph-fill ph-hand-palm" style="font-size:1.2rem;"></i>
+                        Bonificación de Stop
+                    </label>
+                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.5rem; margin-top:0.5rem;">
+                        <label class="stop-option" style="cursor:pointer; position:relative;">
+                            <input type="radio" name="judge-stop-level" value="0" checked hidden>
+                            <div
+                                style="background:var(--bg-surface); border:2px solid var(--border); border-radius:var(--radius-sm); padding:0.8rem 0.4rem; text-align:center; transition:all 0.2s;">
+                                <i class="ph ph-hand" style="font-size:1.5rem; color:var(--text-muted);"></i>
+                                <p
+                                    style="font-size:0.7rem; margin:0.3rem 0 0 0; color:var(--text-muted); font-weight:600;">
+                                    Sin Stop</p>
+                                <p style="font-size:0.65rem; margin:0.2rem 0 0 0; color:var(--text-muted);">+0 pts</p>
+                            </div>
+                        </label>
+                        <label class="stop-option" style="cursor:pointer; position:relative;">
+                            <input type="radio" name="judge-stop-level" value="1" hidden>
+                            <div
+                                style="background:rgba(251, 191, 36, 0.1); border:2px solid #F59E0B; border-radius:var(--radius-sm); padding:0.8rem 0.4rem; text-align:center; transition:all 0.2s;">
+                                <i class="ph-fill ph-hand" style="font-size:1.5rem; color:#F59E0B;"></i>
+                                <p
+                                    style="font-size:0.7rem; margin:0.3rem 0 0 0; color:var(--text-main); font-weight:700;">
+                                    Nivel 1</p>
+                                <p style="font-size:0.65rem; margin:0.2rem 0 0 0; color:#F59E0B; font-weight:700;">+2
+                                    pts</p>
+                            </div>
+                        </label>
+                        <label class="stop-option" style="cursor:pointer; position:relative;">
+                            <input type="radio" name="judge-stop-level" value="2" hidden>
+                            <div
+                                style="background:rgba(245, 158, 11, 0.15); border:2px solid #F59E0B; border-radius:var(--radius-sm); padding:0.8rem 0.4rem; text-align:center; transition:all 0.2s;">
+                                <i class="ph-fill ph-hand" style="font-size:1.5rem; color:#D97706;"></i>
+                                <p
+                                    style="font-size:0.7rem; margin:0.3rem 0 0 0; color:var(--text-main); font-weight:700;">
+                                    Nivel 2</p>
+                                <p style="font-size:0.65rem; margin:0.2rem 0 0 0; color:#D97706; font-weight:700;">+4
+                                    pts</p>
+                            </div>
+                        </label>
+                        <label class="stop-option" style="cursor:pointer; position:relative; grid-column:span 3;">
+                            <input type="radio" name="judge-stop-level" value="3" hidden>
+                            <div
+                                style="background:rgba(213, 43, 30, 0.1); border:2px solid var(--accent); border-radius:var(--radius-sm); padding:0.8rem 0.4rem; text-align:center; transition:all 0.2s;">
+                                <i class="ph-fill ph-hand" style="font-size:1.5rem; color:var(--accent);"></i>
+                                <p
+                                    style="font-size:0.7rem; margin:0.3rem 0 0 0; color:var(--text-main); font-weight:700;">
+                                    Nivel 3 - Perfecto</p>
+                                <p
+                                    style="font-size:0.65rem; margin:0.2rem 0 0 0; color:var(--accent); font-weight:700;">
+                                    +6 pts</p>
+                            </div>
+                        </label>
+                    </div>
+                    <p style="font-size:0.7rem; color:var(--text-muted); margin-top:0.5rem;">
+                        <i class="ph ph-info"></i> El stop solo aplica si el truco no es falla
+                    </p>
+                </div>
+
+                <!-- Info de Combo (Dinámico) -->
+                <div id="judge-combo-info"
+                    style="display:none; margin-top:1rem; padding:0.8rem; background:rgba(245, 158, 11, 0.1); border:2px solid #F59E0B; border-radius:var(--radius-sm);">
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                        <i class="ph-fill ph-fire" style="color:#F59E0B; font-size:1.2rem;"></i>
+                        <strong style="color:#F59E0B; font-size:0.9rem;">¡COMBO ACTIVADO!</strong>
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-main); margin:0;">
+                        <span id="combo-families-display">F1 + F2</span>
+                    </p>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin:0.3rem 0 0 0;">
+                        Bonus: <strong id="combo-bonus-value" style="color:#F59E0B;">+0 pts</strong>
+                    </p>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary btn-cancel" id="btn-cancel-judge">Cancelar</button>
                     <button type="submit" class="btn-primary">Registrar Puntaje</button>
