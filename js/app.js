@@ -46,6 +46,7 @@ const ui = {
     btnResetDB: document.getElementById('btn-reset-db'),
     btnExportReport: document.getElementById('btn-export-report'),
     btnRestartServer: document.getElementById('btn-restart-server'),
+    btnGenerateCampeonato: document.getElementById('btn-generate-campeonato'),
 
     // Bulk Import
     btnImportBulk: document.getElementById('btn-import-bulk'),
@@ -451,6 +452,62 @@ function setupEventListeners() {
             window.db.socket.emit('restart-server');
             showToast('Enviando señal de reinicio...', true);
         }
+    };
+
+    ui.btnGenerateCampeonato.onclick = () => {
+        if (!confirm('¿Generar campeonato Junior Femenino con 12 participantes? Esto reseteará la base de datos actual.')) {
+            return;
+        }
+
+        // 12 participantes con nombres chilenos
+        const participantes = [
+            { first: 'Valentina', last: 'González' },
+            { first: 'Sofía', last: 'Muñoz' },
+            { first: 'Isidora', last: 'Silva' },
+            { first: 'Emilia', last: 'Rodríguez' },
+            { first: 'Martina', last: 'López' },
+            { first: 'Carla', last: 'Martínez' },
+            { first: 'Javiera', last: 'Sánchez' },
+            { first: 'Florencia', last: 'Díaz' },
+            { first: 'Antonia', last: 'Pérez' },
+            { first: 'Magdalena', last: 'Rojas' },
+            { first: 'Bárbara', last: 'Torres' },
+            { first: 'Natalia', last: 'Vargas' }
+        ];
+
+        // Resetear DB
+        window.db.socket.emit('reset-db');
+        showToast('Base de datos reseteada');
+
+        // Esperar y agregar participantes
+        setTimeout(() => {
+            participantes.forEach((p, i) => {
+                const skater = {
+                    id: Date.now() + i,
+                    firstName: p.first,
+                    lastName: p.last,
+                    categoryId: 'jun-f',
+                    ranking: i + 1
+                };
+                window.db.socket.emit('add-skater', skater);
+            });
+            showToast('12 participantes agregados');
+
+            // Generar heats después de 1 segundo
+            setTimeout(() => {
+                window.db.socket.emit('generate-heats', { categoryId: 'jun-f', heatSize: 3 });
+                showToast('Heats preliminares generados');
+
+                setTimeout(() => {
+                    showToast('¡Campeonato listo! Ve a Heats para comenzar');
+                    // Recargar la vista
+                    const activeCat = document.getElementById('categories')?.value;
+                    if (activeCat) {
+                        renderActiveBattle();
+                    }
+                }, 1500);
+            }, 1000);
+        }, 500);
     };
 
     // Bulk Import Logic
