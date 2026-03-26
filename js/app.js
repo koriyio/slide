@@ -475,39 +475,43 @@ function setupEventListeners() {
             { first: 'Natalia', last: 'Vargas' }
         ];
 
-        // Resetear DB
-        window.db.socket.emit('reset-db');
-        showToast('Base de datos reseteada');
+        // Escuchar confirmación de reset y luego agregar participantes
+        const onDbReset = () => {
+            window.db.socket.off('db-update', onDbReset);
 
-        // Esperar y agregar participantes
-        setTimeout(() => {
-            participantes.forEach((p, i) => {
-                const skater = {
-                    id: Date.now() + i,
-                    firstName: p.first,
-                    lastName: p.last,
-                    categoryId: 'jun-f',
-                    ranking: i + 1
-                };
-                window.db.socket.emit('add-skater', skater);
-            });
-            showToast('12 participantes agregados');
-
-            // Generar heats después de 1 segundo
+            // Esperar 300ms para asegurar que el reset se completó
             setTimeout(() => {
-                window.db.socket.emit('generate-heats', { categoryId: 'jun-f', heatSize: 3 });
-                showToast('Heats preliminares generados');
+                participantes.forEach((p, i) => {
+                    const skater = {
+                        id: Date.now() + i,
+                        firstName: p.first,
+                        lastName: p.last,
+                        categoryId: 'jun-f',
+                        ranking: i + 1
+                    };
+                    window.db.socket.emit('add-skater', skater);
+                });
+                showToast('12 participantes agregados');
 
+                // Generar heats después de 800ms
                 setTimeout(() => {
-                    showToast('¡Campeonato listo! Ve a Heats para comenzar');
-                    // Recargar la vista
-                    const activeCat = document.getElementById('categories')?.value;
-                    if (activeCat) {
+                    window.db.socket.emit('generate-heats', { categoryId: 'jun-f', heatSize: 3 });
+                    showToast('Heats preliminares generados');
+
+                    setTimeout(() => {
+                        showToast('¡Campeonato listo! Ve a Heats para comenzar');
                         renderActiveBattle();
-                    }
-                }, 1500);
-            }, 1000);
-        }, 500);
+                    }, 1000);
+                }, 800);
+            }, 300);
+        };
+
+        // Escuchar el evento db-update para saber cuando se completó el reset
+        window.db.socket.on('db-update', onDbReset);
+
+        // Enviar reset
+        window.db.socket.emit('reset-db');
+        showToast('Reseteando base de datos...');
     };
 
     // Bulk Import Logic
