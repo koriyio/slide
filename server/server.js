@@ -23,27 +23,21 @@ const io = new Server(server, {
 
 const DB_FILE = path.join(__dirname, 'db.json');
 
-// Configuración de autenticación desde variables de entorno
-// Si no existen, usar valores por defecto (solo para desarrollo local)
+// Configuración de autenticación
 const AUTH_CONFIG = {
     'Juez 1': {
-        user: process.env.JUEZ1_USER || 'Slide',
-        pass: process.env.JUEZ1_PASS || 'slide2026'
+        user: 'Slide',
+        pass: 'slide2026'
     },
     'Juez 2': {
-        user: process.env.JUEZ2_USER || 'juez2',
-        pass: process.env.JUEZ2_PASS || 'slide'
+        user: 'juez2',
+        pass: 'slide'
     },
     'Juez 3': {
-        user: process.env.JUEZ3_USER || 'juez3',
-        pass: process.env.JUEZ3_PASS || 'slide'
+        user: 'juez3',
+        pass: 'slide'
     }
 };
-
-// Log de configuración de autenticación (solo en desarrollo)
-if (process.env.NODE_ENV !== 'production') {
-    console.log('[CONFIG] AUTH_CONFIG cargada:', Object.keys(AUTH_CONFIG));
-}
 
 // Servir la carpeta principal del frontend (un nivel superior)
 app.use(express.static(path.join(__dirname, '..')));
