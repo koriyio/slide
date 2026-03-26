@@ -12,7 +12,7 @@ class SlideStorage {
             categories: []
         };
         this.currentRole = null;
-        
+
         // Listeners for Server State
         this.socket.on('init', (data) => {
             this.localData = data.db;
@@ -23,7 +23,7 @@ class SlideStorage {
                     if (window.populateTricks) window.populateTricks();
                     renderDashboard();
                     renderSkaters();
-                } catch(e) {}
+                } catch (e) { }
             }
         });
 
@@ -34,7 +34,7 @@ class SlideStorage {
                 if (window.populateCategories) window.populateCategories();
                 renderDashboard();
                 renderSkaters();
-                
+
                 // Si la vista de batallas está activa, renderizarla. 
                 const viewBattles = document.getElementById('view-battles');
                 if (viewBattles && viewBattles.classList.contains('active')) {
@@ -46,7 +46,7 @@ class SlideStorage {
 
                 const viewBrackets = document.getElementById('view-brackets');
                 if (viewBrackets && viewBrackets.classList.contains('active')) renderBrackets();
-                
+
                 const viewActive = document.getElementById('view-active-battle');
                 if (viewActive && viewActive.classList.contains('active')) renderActiveBattle();
             }
@@ -69,8 +69,23 @@ class SlideStorage {
     }
 
     // Role Methods (Async callback via Socket.io)
-    login(role, callback) {
-        this.socket.emit('login', role, (res) => {
+    login(role, username, password, callback) {
+        // Si no se proveen credenciales, usar las por defecto según el rol
+        const defaultCredentials = {
+            'Juez 1': { user: 'Slide', pass: 'slide2026' },
+            'Juez 2': { user: 'juez2', pass: 'slide' },
+            'Juez 3': { user: 'juez3', pass: 'slide' }
+        };
+
+        const creds = username && password
+            ? { role, username, password }
+            : {
+                role,
+                username: defaultCredentials[role]?.user || role.toLowerCase().replace(' ', ''),
+                password: defaultCredentials[role]?.pass || 'slide'
+            };
+
+        this.socket.emit('login', creds, (res) => {
             if (res.success) {
                 this.currentRole = role;
                 this.localData = res.db;
@@ -124,7 +139,7 @@ class SlideStorage {
 
     getStats() {
         const db = this.localData;
-        if(!db.skaters) return { totalSkaters:0, totalBattles:0, completedBattles:0, pendingBattles:0 };
+        if (!db.skaters) return { totalSkaters: 0, totalBattles: 0, completedBattles: 0, pendingBattles: 0 };
         return {
             totalSkaters: db.skaters.length,
             totalBattles: db.battles.length,
@@ -132,9 +147,9 @@ class SlideStorage {
             pendingBattles: db.battles.filter(b => b.status !== 'completed').length
         };
     }
-    
+
     _calculateHeatSizes(n) {
-        if (n <= 5) return [n]; 
+        if (n <= 5) return [n];
         const k = Math.floor(n / 4);
         const rem = n % 4;
         if (rem === 0) return Array(k).fill(4);
@@ -148,9 +163,9 @@ class SlideStorage {
         let skaters = this.getSkaters().filter(s => s.categoryId === categoryId);
         if (skaters.length === 0) return [];
 
-        skaters.sort((a,b) => {
-            if(a.seedNumber === 0 && b.seedNumber > 0) return 1;
-            if(b.seedNumber === 0 && a.seedNumber > 0) return -1;
+        skaters.sort((a, b) => {
+            if (a.seedNumber === 0 && b.seedNumber > 0) return 1;
+            if (b.seedNumber === 0 && a.seedNumber > 0) return -1;
             return a.seedNumber - b.seedNumber;
         });
 
@@ -201,12 +216,12 @@ class SlideStorage {
             7: [0, 6, 3, 4, 2, 5, 1], 8: [0, 7, 3, 4, 2, 5, 6, 1]
         };
 
-        const order = wsBracketOrder[g] || Array.from({length: g}, (_, i) => i);
+        const order = wsBracketOrder[g] || Array.from({ length: g }, (_, i) => i);
         let finalGroups = order.map(idx => buckets[idx]);
 
         let newBattles = [];
         finalGroups.forEach((grp, idx) => {
-            if(!grp) return;
+            if (!grp) return;
             newBattles.push({
                 id: Date.now() + idx + Math.floor(Math.random() * 1000),
                 categoryId: categoryId,
@@ -488,7 +503,7 @@ class SlideStorage {
     }
 
     saveDB(jsonStringOrObject) {
-         this.socket.emit('restore-db', jsonStringOrObject);
+        this.socket.emit('restore-db', jsonStringOrObject);
     }
 
     resetDB() {

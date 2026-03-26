@@ -1,7 +1,35 @@
+# Dependencies
 server/node_modules/
 node_modules/
+
+# Environment variables
 .env
-.DS_Store
+.env.local
+.env.production
+
+# Logs
+*.log
 tunnel_output.log
 tunnel.log
-*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database files (si se usa SQLite local)
+*.db
+*.sqlite
+server/db.json
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

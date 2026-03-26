@@ -4,23 +4,32 @@
   "description": "Slide Competition Manager - Multi-Judge Server",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [
     "slide",
     "competition",
     "inline-skating",
-    "judging"
+    "judging",
+    "freestyle"
   ],
-  "author": "",
+  "author": "Rodrigo Aburto Pereira",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "cors": "^2.8.6",
+    "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "html-pdf-node": "^1.0.8",
     "puppeteer": "^24.39.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

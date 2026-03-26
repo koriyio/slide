@@ -102,6 +102,7 @@ function setupAuth() {
 
             let targetRole = null;
 
+            // Determinar rol basado en credenciales ingresadas
             if (u === 'Slide' && p === 'slide2026') {
                 targetRole = 'Juez 1';
             } else if (u.toLowerCase() === 'juez2' && p === 'slide') {
@@ -111,8 +112,8 @@ function setupAuth() {
             }
 
             if (targetRole) {
-                // Iniciar sesión directamente con el rol correspondiente
-                window.db.login(targetRole, (success, msg) => {
+                // Iniciar sesión con credenciales completas
+                window.db.login(targetRole, u, p, (success, msg) => {
                     if (success) {
                         ui.authScreen.style.display = 'none';
                         ui.loginScreen.style.display = 'none';
@@ -120,7 +121,7 @@ function setupAuth() {
                         ui.currentUserRole.innerText = window.db.currentRole;
                         applyRoleRestrictions();
                     } else {
-                        ui.authError.innerText = msg || 'El rol ya está en uso por otro dispositivo';
+                        ui.authError.innerText = msg || 'Credenciales incorrectas o rol ya en uso';
                         ui.authError.style.display = 'block';
                     }
                 });
@@ -136,7 +137,17 @@ function setupLogin() {
     ui.roleBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const role = btn.dataset.role;
-            window.db.login(role, (success, msg) => {
+
+            // Credenciales por defecto según el rol
+            const defaultCredentials = {
+                'Juez 1': { user: 'Slide', pass: 'slide2026' },
+                'Juez 2': { user: 'juez2', pass: 'slide' },
+                'Juez 3': { user: 'juez3', pass: 'slide' }
+            };
+
+            const creds = defaultCredentials[role] || { user: role.toLowerCase().replace(' ', ''), pass: 'slide' };
+
+            window.db.login(role, creds.user, creds.pass, (success, msg) => {
                 if (success) {
                     ui.loginScreen.style.display = 'none';
                     ui.mainApp.style.display = 'flex';
@@ -197,7 +208,7 @@ function applyRoleRestrictions() {
 }
 
 // Global helper for simple direct navigation
-window.navigateTo = function(viewName) {
+window.navigateTo = function (viewName) {
     const targetNav = Array.from(ui.navItems).find(n => n.dataset.view === viewName);
     // If nav doesn't exist or is explicitly hidden due to role restrictions, abort
     if (!targetNav || targetNav.style.display === 'none') return;
@@ -205,13 +216,13 @@ window.navigateTo = function(viewName) {
     // Remove active classes
     ui.navItems.forEach(nav => nav.classList.remove('active'));
     ui.views.forEach(view => view.classList.remove('active'));
-    
+
     // Add active class
     targetNav.classList.add('active');
     const targetViewId = 'view-' + viewName;
     const targetView = document.getElementById(targetViewId);
-    if(targetView) targetView.classList.add('active');
-    
+    if (targetView) targetView.classList.add('active');
+
     // Call render
     if (viewName === 'dashboard') renderDashboard();
     if (viewName === 'skaters') renderSkaters();
@@ -276,7 +287,7 @@ function setupEventListeners() {
 
     ui.btnGenerateHeats.onclick = () => {
         const catId = ui.battlesCategorySelect.value;
-        
+
         if (catId) {
             const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
             if (skatersCount < 3) return showToast('Se necesitan al menos 3 patinadores para hacer grupos', true);
@@ -289,7 +300,7 @@ function setupEventListeners() {
             const categories = window.db.getCategories();
             let generatedAny = false;
             let insufficientAny = false;
-            
+
             if (confirm(`Se van a generar los grupos para TODAS las categorías. ¿Estás seguro?`)) {
                 categories.forEach(cat => {
                     const skatersCount = window.db.getSkaters().filter(s => s.categoryId === cat.id).length;
@@ -300,7 +311,7 @@ function setupEventListeners() {
                         insufficientAny = true;
                     }
                 });
-                
+
                 if (generatedAny) {
                     showToast('Generando grupos para todas las categorías...');
                 } else {
@@ -779,64 +790,66 @@ function renderBattles() {
     const allSkaters = window.db.getSkaters();
     let battles = [];
 
-<<<<<<< HEAD
     // Si hay categoría seleccionada, filtrar por ella. Si no, mostrar TODAS las batallas
     if (catId) {
         battles = window.db.getBattlesByCategory(catId);
+
+        // Si no hay batallas pero hay competidores, podriamos ofrecer generar (mejora de main)
+        if (battles.length === 0) {
+            const skatersInCat = window.db.getSkaters().filter(s => s.categoryId === catId);
+            if (skatersInCat.length >= 3) {
+                // Generación automática si hay suficientes
+                ui.battlesContainer.innerHTML = `
+                    <div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">
+                        <p>No hay batallas generadas para esta categoría, pero hay ${skatersInCat.length} competidores listos.</p>
+                        <button class="btn-primary" onclick="generateHeats('${catId}')" style="margin-top:1rem;">Generar Grupos Ahora</button>
+                    </div>`;
+                return;
+            } else if (skatersInCat.length > 0) {
+                ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">No hay suficientes competidores para hacer grupos. Se necesitan al menos 3.</div>';
+                return;
+            }
+        }
     } else {
-        // Obtener todas las batallas de todas las categorías
-        battles = window.db.getDB().battles || [];
+        // Obtener todas las batallas de todas las categorías (mejora de master)
+        battles = window.db.getBattles() || [];
     }
 
     if (battles.length === 0) {
-        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas generadas aún. Presiona "Generar Grupos" para crear nuevas.</div>';
+        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas generadas aún. Selecciona una categoría para empezar.</div>';
         return;
-=======
-    if(battles.length === 0) {
-        const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
-        if (skatersCount >= 3) {
-            window.db.generateHeats(catId);
-            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">Generando grupos automáticamente... <i class="ph ph-spinner ph-spin"></i></div>';
-            return;
-        } else if (skatersCount > 0) {
-            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">No hay suficientes competidores para hacer grupos. Se necesitan al menos 3.</div>';
-            return;
-        } else {
-            ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay competidores registrados en esta categoría.</div>';
-            return;
-        }
->>>>>>> main
     }
+}
 
-    // Agrupar batallas por categoría para mostrar cuando se muestran todas
-    const battlesByCategory = {};
-    battles.forEach(battle => {
-        if (!battlesByCategory[battle.categoryId]) {
-            battlesByCategory[battle.categoryId] = [];
-        }
-        battlesByCategory[battle.categoryId].push(battle);
+// Agrupar batallas por categoría para mostrar cuando se muestran todas
+const battlesByCategory = {};
+battles.forEach(battle => {
+    if (!battlesByCategory[battle.categoryId]) {
+        battlesByCategory[battle.categoryId] = [];
+    }
+    battlesByCategory[battle.categoryId].push(battle);
+});
+
+// Si hay categoría seleccionada, renderizar normalmente
+if (catId) {
+    renderBattlesByCategory(battles, allSkaters);
+    checkAndShowNextPhaseButton(catId);
+} else {
+    // Renderizar todas las batallas agrupadas por categoría
+    const categories = window.db.getCategories();
+    Object.keys(battlesByCategory).forEach(categoryId => {
+        const category = categories.find(c => c.id === categoryId);
+        const categoryName = category ? category.name : categoryId;
+
+        // Category separator
+        const categoryTitle = document.createElement('h3');
+        categoryTitle.style.cssText = 'grid-column: 1 / -1; color: var(--accent); margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.2rem; text-transform: uppercase; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;';
+        categoryTitle.innerHTML = `<i class="ph ph-award"></i> ${categoryName}`;
+        ui.battlesContainer.appendChild(categoryTitle);
+
+        renderBattlesByCategory(battlesByCategory[categoryId], allSkaters);
     });
-
-    // Si hay categoría seleccionada, renderizar normalmente
-    if (catId) {
-        renderBattlesByCategory(battles, allSkaters);
-        checkAndShowNextPhaseButton(catId);
-    } else {
-        // Renderizar todas las batallas agrupadas por categoría
-        const categories = window.db.getCategories();
-        Object.keys(battlesByCategory).forEach(categoryId => {
-            const category = categories.find(c => c.id === categoryId);
-            const categoryName = category ? category.name : categoryId;
-
-            // Category separator
-            const categoryTitle = document.createElement('h3');
-            categoryTitle.style.cssText = 'grid-column: 1 / -1; color: var(--accent); margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.2rem; text-transform: uppercase; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;';
-            categoryTitle.innerHTML = `<i class="ph ph-award"></i> ${categoryName}`;
-            ui.battlesContainer.appendChild(categoryTitle);
-
-            renderBattlesByCategory(battlesByCategory[categoryId], allSkaters);
-        });
-    }
+}
 }
 
 function renderBattlesByCategory(battles, allSkaters) {
@@ -1263,8 +1276,8 @@ function renderBrackets() {
         'Final': ['Final']
     };
     const getBasePhase = (p) => {
-        for(let key in altPhases) {
-            if(altPhases[key].includes(p)) return key;
+        for (let key in altPhases) {
+            if (altPhases[key].includes(p)) return key;
         }
         return 'Preliminar';
     };
@@ -1279,9 +1292,9 @@ function renderBrackets() {
     const currentBattles = battles.filter(b => getBasePhase(b.phase) === lastPhaseBase);
     const uncompleted = currentBattles.some(b => b.status !== 'completed');
     const isFinal = lastPhaseBase === 'Final';
-    
+
     // Obtenemos el ID de categoría de la primera batalla en caso de estar viendo "Todas las categorías"
-    const targetCatId = catId || (battles.length > 0 ? battles[battles.length-1].categoryId : '');
+    const targetCatId = catId || (battles.length > 0 ? battles[battles.length - 1].categoryId : '');
 
     let nextPhaseBtnHtml = '';
     if (!uncompleted && !isFinal && currentBattles.length > 0 && targetCatId) {

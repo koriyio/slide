@@ -2,8 +2,26 @@ services:
   - type: web
     name: slide-battle-live
     env: node
+    region: sa-east-1  # São Paulo, Brasil - más cercano a Chile
+    plan: free
     buildCommand: "cd server && npm install"
     startCommand: "cd server && node server.js"
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3005
+      - key: JUEZ1_USER
+        sync: false
+      - key: JUEZ1_PASS
+        sync: false
+      - key: JUEZ2_USER
+        sync: false
+      - key: JUEZ2_PASS
+        sync: false
+      - key: JUEZ3_USER
+        sync: false
+      - key: JUEZ3_PASS
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
