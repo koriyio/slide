@@ -236,48 +236,50 @@ io.on('connection', (socket) => {
         return match ? match[1] : '';
     }
 
-    // Función para calcular bonificación de combo
-    function calculateComboBonus(tricks) {
-        if (!tricks || tricks.length < 2) return { hasCombo: false, bonus: 0, comboType: null };
+    // --- NUEVAS FUNCIONES DE MULTIPLICADORES ---
 
-        // Filtrar trucos válidos (no nulos, no fallas)
-        const validTricks = tricks.filter(t => t && t.trickId !== 'fail');
-        if (validTricks.length < 2) return { hasCombo: false, bonus: 0, comboType: null };
-
-        // Obtener familias únicas
-        const families = [...new Set(validTricks.map(t => getFamilyShort(t.family)))];
-
-        // Si hay 2 familias distintas, aplicar combo
-        if (families.length >= 2) {
-            // Calcular puntaje base total
-            const baseScore = validTricks.reduce((sum, t) => sum + (t.baseScore || 0), 0);
-            // Multiplicador 1.5x
-            const multiplier = 1.5;
-            const scoreWithMultiplier = baseScore * multiplier;
-            const bonus = Math.round(scoreWithMultiplier - baseScore);
-
-            return {
-                hasCombo: true,
-                bonus: bonus,
-                comboType: 'Doble Familia',
-                multiplier: multiplier
-            };
-        }
-
-        return { hasCombo: false, bonus: 0, comboType: null };
+    // 1. Multiplicador de Calidad de Freno (Reemplaza calculateStopBonus)
+    function getStopMultiplier(trick) {
+        if (!trick || trick.isFail || !trick.stopLevel) return 0;
+        // Asumiendo que el front envía: 1 = Complete, 2 = Incomplete
+        const stopMultipliers = {
+            1: 1.0,  // Stop Completo (Conserva 100%)
+            2: 0.5   // Incompleto o fuera de área (Castigo 50%)
+        };
+        return stopMultipliers[trick.stopLevel] || 0.5;
     }
 
-    // Función para calcular bonificación de Stop
-    function calculateStopBonus(trick) {
-        if (!trick || trick.isFail || !trick.stopLevel) return 0;
-
-        const stopBonuses = {
-            1: 2,  // Stop Nivel 1: +2 pts
-            2: 4,  // Stop Nivel 2: +4 pts
-            3: 6   // Stop Nivel 3: +6 pts
+    // 2. Multiplicador de Calidad de Ejecución (Reemplaza los adjustments fijos)
+    function getExecutionMultiplier(trick) {
+        if (!trick || !trick.executionLevel) return 1.0;
+        // Asumiendo que el front envía: 1 = Clean, 2 = Average, 3 = Poor
+        const execMultipliers = {
+            1: 1.0,   // Limpio (Conserva 100%)
+            2: 0.80,  // Promedio (Castigo 20%)
+            3: 0.60   // Pobre/Colapso (Castigo 40%)
         };
+        return execMultipliers[trick.executionLevel] || 1.0;
+    }
 
-        return stopBonuses[trick.stopLevel] || 0;
+    // 3. Multiplicador de Distancia (Requiere que el front envíe trick.distanceMeters)
+    function getDistanceMultiplier(distanceMeters) {
+        if (!distanceMeters || distanceMeters < 2.0) return 0; // Slide nulo
+        if (distanceMeters < 4.0) return distanceMeters / 4.0; // Penalización proporcional
+        return 1.0 + (distanceMeters - 4.0) * 0.1;             // Bono por metro extra
+    }
+
+    // 4. Multiplicador de Variedad de Familias (Reemplaza calculateComboBonus)
+    function getVarietyMultiplier(validTricks) {
+        if (!validTricks || validTricks.length === 0) return 0.0;
+        
+        // Obtener familias únicas usando la función existente getFamilyShort
+        const families = new Set(validTricks.map(t => getFamilyShort(t.family)));
+        const numFamilies = families.size;
+
+        if (numFamilies === 1) return 0.70; // Penalización: No cumple el mínimo de 2
+        if (numFamilies === 2) return 1.00; // Cumple el reglamento
+        if (numFamilies === 3) return 1.05; // Bono de variedad
+        return 1.10;                        // Variedad excelente (4+ familias)
     }
 
     socket.on('save-trick', ({ battleId, skaterId, trickPerformed, role, slotIndex }) => {
@@ -296,62 +298,79 @@ io.on('connection', (socket) => {
             };
         }
 
-        // Obtener familia del truco si existe
+        // Obtener familia del truco si existe (sin sobreescribir el nombre enviado por el juez)
         if (trickPerformed.trickId && trickPerformed.trickId !== 'fail') {
             const allTricks = db.tricks || [];
             const trickData = allTricks.find(t => t.id === trickPerformed.trickId);
             if (trickData) {
                 trickPerformed.family = trickData.family;
+                if (!trickPerformed.name) trickPerformed.name = trickData.name;
             }
         }
 
-        // Calcular bonificación de Stop
-        const stopBonus = calculateStopBonus(trickPerformed);
-        trickPerformed.stopBonus = stopBonus;
+        // --- NUEVO CÁLCULO DE MULTIPLICADORES POR TRUCO ---
+        if (trickPerformed.isFail) {
+            trickPerformed.finalScore = 0;
+            trickPerformed.stopBonus = 0;
+        } else if (trickPerformed.baseScore !== undefined) {
+            // Se calculan los 3 factores
+            const m_stop = getStopMultiplier(trickPerformed);
+            const m_exec = getExecutionMultiplier(trickPerformed);
+            
+            // Nota al Dev: Asegurarse que el Frontend envíe 'distanceMeters' en el objeto trickPerformed
+            const distance = trickPerformed.distanceMeters || 4.0; 
+            const m_dist = getDistanceMultiplier(distance);
 
-        // Actualizar finalScore con el stop bonus
-        if (!trickPerformed.isFail && trickPerformed.baseScore !== undefined) {
-            trickPerformed.finalScore = (trickPerformed.baseScore || 0) + (trickPerformed.adjustment || 0) + (trickPerformed.distanceBonus || 0) + stopBonus;
+            // Cálculo base previo al factor de freno (para mostrar el bono en UI)
+            const scoreBeforeStop = (trickPerformed.baseScore || 0) * m_dist * m_exec;
+
+            // Fórmula multiplicativa total: Base * Distancia * Ejecución * Freno
+            const finalScore = scoreBeforeStop * m_stop;
+
+            // Guardar el impacto del stop como un "bono virtual" para la UI (+X o -X)
+            trickPerformed.stopBonus = Math.round((finalScore - scoreBeforeStop) * 10) / 10;
+            
+            // Redondear a 2 decimales para limpieza en la base de datos
+            trickPerformed.finalScore = Math.round(finalScore * 100) / 100;
+        } else {
+            trickPerformed.finalScore = 0;
+            trickPerformed.stopBonus = 0;
         }
 
         // Guardar en el slot específico
         trickPerformed.judgeRole = role;
         skater.judging[role][slotIndex] = trickPerformed;
 
-        // Calcular puntaje con combos y bonificaciones
+        // Calcular puntaje total de la ronda para este juez
         const calculateJudgeScore = (jRole) => {
             const tricks = skater.judging[jRole] || [];
-            const validTricks = tricks.filter(t => t !== null);
+            // Filtrar trucos que no son nulos y que lograron sumar puntos
+            const validTricks = tricks.filter(t => t !== null && !t.isFail && t.finalScore > 0);
 
             if (validTricks.length === 0) return 0;
 
-            // Calcular combo para este slot
-            const comboResult = calculateComboBonus(validTricks);
+            // Extraer solo los puntajes
+            let scores = validTricks.map(t => t.finalScore);
 
-            // Calcular puntajes individuales con bonificaciones
-            let scores = validTricks.map(t => {
-                if (!t || t.isFail) return 0;
-
-                // Puntaje base + ajuste + distancia
-                let trickScore = (t.baseScore || 0) + (t.adjustment || 0) + (t.distanceBonus || 0);
-
-                // Agregar bono de stop
-                trickScore += calculateStopBonus(t);
-
-                return trickScore;
-            });
-
-            // Aplicar multiplicador de combo si existe
-            if (comboResult.hasCombo && scores.length >= 2) {
-                // El bonus de combo se distribuye proporcionalmente
-                const totalBase = scores.reduce((a, b) => a + b, 0);
-                scores = scores.map(s => s + Math.round(comboResult.bonus / scores.length));
-            }
-
-            // Ordenar y tomar los mejores
+            // Ordenar de mayor a menor y tomar los mejores (4 en Final, 3 en rondas previas)
             scores.sort((a, b) => b - a);
             const maxToCount = battle.phase === 'Final' ? 4 : 3;
-            return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
+            
+            // Tomar los N mejores trucos
+            const topScores = scores.slice(0, maxToCount);
+            
+            // Para la variedad, solo evaluamos las familias de los trucos que entraron al Top 3/4
+            const topTricksObjects = validTricks.filter(t => topScores.includes(t.finalScore)).slice(0, maxToCount);
+
+            // Suma base de los mejores intentos
+            const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
+
+            // Aplicar Multiplicador de Variedad a la suma total
+            const m_var = getVarietyMultiplier(topTricksObjects);
+            const roundTotal = baseTotal * m_var;
+
+            // Redondear a 2 decimales
+            return Math.round(roundTotal * 100) / 100;
         };
 
         const j1Total = calculateJudgeScore('Juez 1');
@@ -377,10 +396,21 @@ io.on('connection', (socket) => {
             // Recalcular
             const calculateJudgeScore = (jRole) => {
                 const tricks = skater.judging[jRole] || [];
-                let scores = tricks.map(t => t ? t.finalScore : 0);
+                const validTricks = tricks.filter(t => t !== null && !t.isFail && t.finalScore > 0);
+                if (validTricks.length === 0) return 0;
+
+                let scores = validTricks.map(t => t.finalScore);
                 scores.sort((a, b) => b - a);
                 const maxToCount = battle.phase === 'Final' ? 4 : 3;
-                return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
+                
+                const topScores = scores.slice(0, maxToCount);
+                const topTricksObjects = validTricks.filter(t => topScores.includes(t.finalScore)).slice(0, maxToCount);
+
+                const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
+                const m_var = getVarietyMultiplier(topTricksObjects);
+                const roundTotal = baseTotal * m_var;
+
+                return Math.round(roundTotal * 100) / 100;
             };
             skater.totalScore = (calculateJudgeScore('Juez 1') + calculateJudgeScore('Juez 2') + calculateJudgeScore('Juez 3')) / 3;
 

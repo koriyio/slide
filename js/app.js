@@ -230,25 +230,43 @@ window.navigateTo = function (viewName) {
     if (viewName === 'brackets') renderBrackets();
 };
 
-// Navigation Logic
-function setupNavigation() {
-    // Sidebar items
-    ui.navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.navigateTo(item.dataset.view);
-        });
-    });
+    // Mobile Menu Toggle
+    const btnMenuToggle = document.getElementById('btn-menu-toggle');
+    const sidebar = document.getElementById('app-sidebar');
 
-    // Dashboard shortcuts (and any other element with data-navigate) using Event Delegation
-    document.body.addEventListener('click', (e) => {
-        const target = e.target.closest('[data-navigate]');
-        if (target) {
-            e.preventDefault();
-            window.navigateTo(target.dataset.navigate);
-        }
-    });
-}
+    if (btnMenuToggle && sidebar) {
+        btnMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('show');
+        });
+    }
+
+    // Navigation Logic
+    function setupNavigation() {
+        // Sidebar items
+        ui.navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.navigateTo(item.dataset.view);
+                // Cerrar sidebar en móviles tras navegar
+                if (window.innerWidth <= 768 && sidebar) {
+                    sidebar.classList.remove('show');
+                }
+            });
+        });
+
+        // Dashboard shortcuts (and any other element with data-navigate) using Event Delegation
+        document.body.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-navigate]');
+            if (target) {
+                e.preventDefault();
+                window.navigateTo(target.dataset.navigate);
+                // Cerrar sidebar en móviles tras navegar
+                if (window.innerWidth <= 768 && sidebar) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+    }
 
 
 
@@ -1028,8 +1046,8 @@ function renderBattlesByCategory(battles, allSkaters) {
             listHtml += '</ul>';
 
             let actionBtn = battle.status === 'completed'
-                ? `<button class="btn-secondary btn-full" onclick="openBattle(${battle.id})" style="margin-top:auto;"><i class="ph ph-eye"></i> Ver Resultados</button>`
-                : `<button class="btn-primary btn-full" onclick="openBattle(${battle.id})" style="margin-top:auto;"><i class="ph ph-exam"></i> Jueceo de Ronda</button>`;
+                ? `<button class="btn-secondary btn-full" onclick="openBattle('${battle.id}')" style="margin-top:auto;"><i class="ph ph-eye"></i> Ver Resultados</button>`
+                : `<button class="btn-primary btn-full" onclick="openBattle('${battle.id}')" style="margin-top:auto;"><i class="ph ph-exam"></i> Jueceo de Ronda</button>`;
 
             card.innerHTML = header + listHtml + actionBtn;
             ui.battlesContainer.appendChild(card);
@@ -1202,7 +1220,7 @@ function renderActiveBattle() {
 
     if (battle.status === 'completed') {
         ui.btnFinishBattle.style.display = 'none';
-        document.getElementById('active-battle-title').innerText = `Resultados ${battle.phase} ${battle.heatNumber}`;
+        document.getElementById('active-battle-title').innerText = `RESULTADOS FINALES - ${battle.phase} ${battle.heatNumber}`;
 
         // Lanzar confetti si es una Final
         if (battle.phase === 'Final') {
@@ -1296,23 +1314,22 @@ function renderActiveBattle() {
                 </div>
 
                 <!-- Total Global -->
-                <div style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); padding:0.8rem; border-radius:6px; border:2px solid ${showGlobal ? 'var(--accent)' : 'var(--border)'}; ${!showGlobal ? 'filter: blur(3px); opacity:0.4;' : ''}">
+                <div style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); padding:0.8rem; border-radius:6px; border:2px solid ${showGlobal ? 'var(--accent)' : 'var(--border)'}; ${(battle.status !== 'completed' && !showGlobal) ? 'filter: blur(3px); opacity:0.4;' : ''}">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:1px;">TOTAL GLOBAL</span>
-                        <strong style="color:var(--accent); font-size:1.5rem;">${showGlobal ? ((j1Sum + j2Sum + j3Sum) / 3).toFixed(2) : '--.--'}</strong>
+                        <strong style="color:var(--accent); font-size:1.5rem;">${(battle.status === 'completed' || showGlobal) ? ((j1Sum + j2Sum + j3Sum) / 3).toFixed(2) : '--.--'}</strong>
                     </div>
                 </div>
 
                 ${battle.status === 'completed' ? (() => {
                 // Ordenar skaters por puntaje para determinar la posición
-                const sortedSkaters = battle.skaters.sort((a, b) => b.totalScore - a.totalScore);
+                const sortedSkaters = [...battle.skaters].sort((a, b) => b.totalScore - a.totalScore);
                 const position = sortedSkaters.findIndex(s => s.skaterId === bs.skaterId) + 1;
 
                 // Determinar sufijo ordinal (1º, 2º, 3º, 4º, etc.)
-                const sufijos = { 1: 'º', 2: 'º', 3: 'º' };
-                const sufijo = sufijos[position] || 'º';
+                const sufijo = 'º';
 
-                // Colores diferentes para top 3 (mejorados para mayor contraste)
+                // Colores diferentes para top 3
                 let colorBg, colorText, borderStyle;
                 if (position === 1) {
                     colorBg = '#FEF08A'; colorText = '#854D0E'; borderStyle = '1px solid #F59E0B';
@@ -1570,8 +1587,9 @@ function exportTournamentCSV() {
 
     // Calcular posición final de cada skater en el campeonato
     const skaterResults = skaters.map(sk => {
-        const cat = categories.find(c => c.id === sk.categoryId);
-        const categoryName = cat ? cat.name : sk.categoryId;
+        const refCatId = sk.categoryId || sk.category || 'unknown';
+        const cat = categories.find(c => c.id === refCatId);
+        const categoryName = cat ? cat.name : refCatId;
 
         // Buscar todas las batallas de este patinador
         const skaterBattles = battles.filter(b => b.skaters.some(s => s.skaterId === sk.id));
@@ -1586,18 +1604,25 @@ function exportTournamentCSV() {
         let j3Score = 0;
 
         const phaseMap = {
-            'Preliminar': 1, 'Cuartos': 2, 'Semifinal': 3, 'Final': 4,
-            'Heat': 1, 'Quarter-Final': 2, 'Semi-Final': 3
+            'Preliminar': 1, 'Heat': 1,
+            'Cuartos': 2, 'Quarter-Final': 2, 'Cuartos de Final': 2,
+            'Semifinal': 3, 'Semi-Final': 3, 'Semifinales': 3,
+            'Final': 4
         };
 
         if (skaterBattles.length > 0) {
             // Obtener la fase más avanzada
             const lastBattle = skaterBattles.reduce((last, b) =>
-                phaseMap[b.phase] > phaseMap[last.phase] ? b : last, skaterBattles[0]);
+                (phaseMap[b.phase] || 0) > (phaseMap[last.phase] || 0) ? b : last, skaterBattles[0]);
             const result = lastBattle.skaters.find(s => s.skaterId === sk.id);
 
-            finalPhase = lastBattle.phase;
-            finalPhaseNum = phaseMap[lastBattle.phase];
+            let rawPhase = lastBattle.phase;
+            if (rawPhase === 'Heat') rawPhase = 'Preliminar';
+            if (rawPhase === 'Quarter-Final' || rawPhase === 'Cuartos de Final') rawPhase = 'Cuartos';
+            if (rawPhase === 'Semi-Final' || rawPhase === 'Semifinales') rawPhase = 'Semifinal';
+
+            finalPhase = rawPhase;
+            finalPhaseNum = phaseMap[lastBattle.phase] || 1;
 
             if (result) {
                 const judging = result.judging || {};
@@ -1632,10 +1657,11 @@ function exportTournamentCSV() {
     // Primero agrupar por categoría
     const byCategory = {};
     skaterResults.forEach(sk => {
-        if (!byCategory[sk.categoryId]) {
-            byCategory[sk.categoryId] = [];
+        const refCatId = sk.categoryId || sk.category || 'unknown';
+        if (!byCategory[refCatId]) {
+            byCategory[refCatId] = [];
         }
-        byCategory[sk.categoryId].push(sk);
+        byCategory[refCatId].push(sk);
     });
 
     // Para cada categoría, calcular posiciones
@@ -1662,7 +1688,7 @@ function exportTournamentCSV() {
         const semifinalistas = categorySkaters.filter(s => s.finalPhase === 'Semifinal' && !s.isQualified);
         if (semifinalistas.length > 0) {
             // Obtener todas las semifinales
-            const semiBattles = battles.filter(b => (b.phase === 'Semifinal' || b.phase === 'Semi-Final') && b.categoryId === catId && b.status === 'completed');
+            const semiBattles = battles.filter(b => (b.phase === 'Semifinal' || b.phase === 'Semi-Final' || b.phase === 'Semifinales') && b.categoryId === catId && b.status === 'completed');
             const allSemiResults = [];
             semiBattles.forEach(b => {
                 b.skaters.forEach(s => {
@@ -1684,7 +1710,7 @@ function exportTournamentCSV() {
         // 3. Cuartos no clasificados a semifinal (posiciones 9-12)
         const cuartos = categorySkaters.filter(s => s.finalPhase === 'Cuartos' && !s.isQualified);
         if (cuartos.length > 0) {
-            const quarterBattles = battles.filter(b => (b.phase === 'Cuartos' || b.phase === 'Quarter-Final') && b.categoryId === catId && b.status === 'completed');
+            const quarterBattles = battles.filter(b => (b.phase === 'Cuartos' || b.phase === 'Quarter-Final' || b.phase === 'Cuartos de Final') && b.categoryId === catId && b.status === 'completed');
             const allQuarterResults = [];
             quarterBattles.forEach(b => {
                 b.skaters.forEach(s => {
@@ -1706,7 +1732,7 @@ function exportTournamentCSV() {
         // 4. Preliminar no clasificados a cuartos (posiciones 13+)
         const preliminar = categorySkaters.filter(s => s.finalPhase === 'Preliminar' && !s.isQualified);
         if (preliminar.length > 0) {
-            const prelimBattles = battles.filter(b => b.phase === 'Preliminar' && b.categoryId === catId && b.status === 'completed');
+            const prelimBattles = battles.filter(b => (b.phase === 'Preliminar' || b.phase === 'Heat') && b.categoryId === catId && b.status === 'completed');
             const allPrelimResults = [];
             prelimBattles.forEach(b => {
                 b.skaters.forEach(s => {
@@ -1735,7 +1761,7 @@ function exportTournamentCSV() {
         });
     });
 
-    // ORDENAR POR: 1) Categoría, 2) Fase alcanzada (Final primero), 3) Posición final, 4) Puntaje total
+    // ORDENAR POR: 1) Categoría, 2) Fase alcanzada (Final primero), 3) Puntaje total, 4) Posición final
     let sortedSkaters = skaterResults.sort((a, b) => {
         // Primero por categoría
         if (a.categoryId !== b.categoryId) return a.categoryId.localeCompare(b.categoryId);
@@ -1743,15 +1769,15 @@ function exportTournamentCSV() {
         // Luego por fase alcanzada (Final > Semifinal > Cuartos > Preliminar)
         if (b.finalPhaseNum !== a.finalPhaseNum) return b.finalPhaseNum - a.finalPhaseNum;
 
-        // Luego por posición final (los que tienen posición van primero)
+        // Luego por puntaje total (más alto primero)
+        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+
+        // Luego por posición final del grupo (si existe)
         if (a.finalPosition && b.finalPosition) return a.finalPosition - b.finalPosition;
         if (a.finalPosition && !b.finalPosition) return -1;
         if (!a.finalPosition && b.finalPosition) return 1;
 
-        // Luego por puntaje total
-        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-
-        // Finalmente por seed
+        // Finalmente por seed (más bajo primero)
         return (a.seedNumber || 999) - (b.seedNumber || 999);
     });
 
@@ -2001,37 +2027,34 @@ function exportTournamentCSV() {
 `;
 
     let currentCategory = '';
-    let position = 1;
+    let categoryPosition = 0;
 
     sortedSkaters.forEach(sk => {
         const categoryName = sk.categoryName;
 
-        // Usar los datos ya calculados
-        let maxPhase = sk.finalPhase === 'Final' ? '🏆 Final' :
-            sk.finalPhase === 'Semifinal' || sk.finalPhase === 'Semi-Final' ? 'Semifinal' :
-                sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' ? 'Cuartos' : 'Preliminar';
-
-        // Buscar las batallas
-        const skaterBattles = battles.filter(b => b.skaters.some(s => s.skaterId === sk.id));
-
-        let j1Score = sk.j1Score > 0 ? sk.j1Score : '-';
-        let j2Score = sk.j2Score > 0 ? sk.j2Score : '-';
-        let j3Score = sk.j3Score > 0 ? sk.j3Score : '-';
-        let totalScore = sk.totalScore;
-        let isQualified = sk.isQualified;
-        let finalPosition = sk.finalPosition;
-
-        // Si cambia la categoría, agregar separador
+        // Si cambia la categoría, agregar separador y resetear posición
         if (categoryName !== currentCategory) {
             currentCategory = categoryName;
-            position = 1;
+            categoryPosition = 1;
             htmlContent += `
             <tr>
                 <td colspan="11" class="category-header">
                     <strong>${categoryName}</strong>
                 </td>
             </tr>`;
+        } else {
+            categoryPosition++;
         }
+
+        // Usar los datos ya calculados
+        let maxPhase = sk.finalPhase === 'Final' ? '🏆 Final' :
+            (sk.finalPhase === 'Semifinal' || sk.finalPhase === 'Semi-Final' || sk.finalPhase === 'Semifinales') ? 'Semifinal' :
+            (sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' || sk.finalPhase === 'Cuartos de Final') ? 'Cuartos' : 'Preliminar';
+
+        let j1Score = sk.j1Score > 0 ? sk.j1Score : '-';
+        let j2Score = sk.j2Score > 0 ? sk.j2Score : '-';
+        let j3Score = sk.j3Score > 0 ? sk.j3Score : '-';
+        let totalScore = sk.totalScore;
 
         // Determinar clase de puntaje
         let scoreClass = 'score-medium';
@@ -2044,23 +2067,20 @@ function exportTournamentCSV() {
         const seed = sk.seedNumber > 0 ? `#${sk.seedNumber}` : '-';
 
         // Estado
-        let currentRank = position;
         let statusHtml = '-';
-        if (currentRank === 1) {
+        if (categoryPosition === 1 && sk.finalPhaseNum === 4) {
             statusHtml = '<span class="position pos-1">🥇 1º</span>';
-        } else if (currentRank === 2) {
+        } else if (categoryPosition === 2 && sk.finalPhaseNum === 4) {
             statusHtml = '<span class="position pos-2">🥈 2º</span>';
-        } else if (currentRank === 3) {
+        } else if (categoryPosition === 3 && sk.finalPhaseNum === 4) {
             statusHtml = '<span class="position pos-3">🥉 3º</span>';
-        } else if (currentRank <= 8) {
-            statusHtml = `<span class="position" style="background: #0039A6; color: white;">${currentRank}º</span>`;
         } else {
-            statusHtml = `<span class="position pos-default" style="background: #e2e8f0; color: #64748B;">${currentRank}º</span>`;
+            statusHtml = `<span class="position pos-default" style="background: #e2e8f0; color: #64748B;">${categoryPosition}º</span>`;
         }
 
         htmlContent += `
             <tr>
-                <td>${position++}</td>
+                <td>${categoryPosition}</td>
                 <td>${categoryName.split(' ')[0]}</td>
                 <td style="font-family: monospace; font-size: 10px;">${wssa}</td>
                 <td class="skater-name">${fullName}</td>
