@@ -1,6 +1,10 @@
 const { Pool } = require('pg');
 const dns = require('dns');
-const url = require('url');
+
+// Force IPv4 DNS resolution (Render free tier doesn't support IPv6)
+const dnsLookup = (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4 }, callback);
+};
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -47,11 +51,11 @@ class SlideDB {
         }
 
         // Parse connection string to force IPv4 (Render free tier doesn't support IPv6)
-        const parsed = url.parse(connectionString);
+        const parsed = new URL(connectionString);
         const host = parsed.hostname;
         const port = parsed.port || 5432;
-        const user = parsed.auth ? parsed.auth.split(':')[0] : 'postgres';
-        const password = parsed.auth ? parsed.auth.split(':')[1] : '';
+        const user = parsed.username || 'postgres';
+        const password = parsed.password || '';
         const database = (parsed.pathname || '').replace(/^\//, '') || 'postgres';
 
         this.pool = new Pool({
@@ -61,8 +65,8 @@ class SlideDB {
             password: password,
             database: database,
             ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-            // Force IPv4 resolution
-            family: 4
+            // Force IPv4 DNS resolution
+            lookup: dnsLookup
         });
 
         this._ready = this.init();
