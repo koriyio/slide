@@ -25,3 +25,5 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      - key: DATABASE_URL
+        sync: false

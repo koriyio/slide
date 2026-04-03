@@ -46,7 +46,6 @@ const ui = {
     btnResetDB: document.getElementById('btn-reset-db'),
     btnExportReport: document.getElementById('btn-export-report'),
     btnRestartServer: document.getElementById('btn-restart-server'),
-    btnGenerateCampeonato: document.getElementById('btn-generate-campeonato'),
 
     // Bulk Import
     btnImportBulk: document.getElementById('btn-import-bulk'),
@@ -101,8 +100,10 @@ function setupAuth() {
             const u = ui.authUsername.value.trim();
             const p = ui.authPassword.value.trim();
 
-            // Determinar rol basado en el nombre de usuario (sin validar password en el cliente)
+            // Determinar rol basado en el nombre de usuario
+            let targetRole = null;
             const userLower = u.toLowerCase();
+            
             if (userLower === 'slide' || userLower === 'admin' || userLower === 'juez1') {
                 targetRole = 'Juez 1';
             } else if (userLower === 'juez2') {
@@ -452,12 +453,13 @@ function setupEventListeners() {
     };
 
     ui.btnResetDB.onclick = () => {
-        if (confirm('⚠️ PELIGRO: ¿Estás seguro de que deseas ELIMINAR TODOS los datos? Esta acción no se puede deshacer.')) {
-            if (confirm('Confirmación final: ¿BORRAR TODO?')) {
-                window.db.resetDB();
-                showToast('Base de datos eliminada. Recargando...', true);
-                setTimeout(() => location.reload(), 1500);
-            }
+        const password = prompt('⚠️ PELIGRO: Esto ELIMINARÁ TODOS los datos de la competencia.\nPara confirmar, escribe "ELIMINAR":');
+        if (password === 'ELIMINAR') {
+            window.db.resetDB();
+            showToast('Base de datos eliminada. Recargando...', true);
+            setTimeout(() => location.reload(), 1500);
+        } else if (password !== null) {
+            showToast('Confirmación incorrecta. Acción cancelada.', true);
         }
     };
 
@@ -472,66 +474,6 @@ function setupEventListeners() {
         }
     };
 
-    ui.btnGenerateCampeonato.onclick = () => {
-        if (!confirm('¿Generar campeonato Junior Femenino con 12 participantes? Esto reseteará la base de datos actual.')) {
-            return;
-        }
-
-        // 12 participantes con nombres chilenos
-        const participantes = [
-            { first: 'Valentina', last: 'González' },
-            { first: 'Sofía', last: 'Muñoz' },
-            { first: 'Isidora', last: 'Silva' },
-            { first: 'Emilia', last: 'Rodríguez' },
-            { first: 'Martina', last: 'López' },
-            { first: 'Carla', last: 'Martínez' },
-            { first: 'Javiera', last: 'Sánchez' },
-            { first: 'Florencia', last: 'Díaz' },
-            { first: 'Antonia', last: 'Pérez' },
-            { first: 'Magdalena', last: 'Rojas' },
-            { first: 'Bárbara', last: 'Torres' },
-            { first: 'Natalia', last: 'Vargas' }
-        ];
-
-        // Escuchar confirmación de reset y luego agregar participantes
-        const onDbReset = () => {
-            window.db.socket.off('db-update', onDbReset);
-
-            // Esperar 300ms para asegurar que el reset se completó
-            setTimeout(() => {
-                participantes.forEach((p, i) => {
-                    const skater = {
-                        id: Date.now() + i,
-                        firstName: p.first,
-                        lastName: p.last,
-                        categoryId: 'jun-f',
-                        ranking: i + 1,
-                        seedNumber: i + 1
-                    };
-                    window.db.socket.emit('add-skater', skater);
-                });
-                showToast('12 participantes agregados');
-
-                // Generar heats después de 800ms usando la función del storage
-                setTimeout(() => {
-                    window.db.generateHeats('jun-f');
-                    showToast('Heats preliminares generados');
-
-                    setTimeout(() => {
-                        showToast('¡Campeonato listo! Ve a Heats para comenzar');
-                        renderActiveBattle();
-                    }, 1000);
-                }, 800);
-            }, 300);
-        };
-
-        // Escuchar el evento db-update para saber cuando se completó el reset
-        window.db.socket.on('db-update', onDbReset);
-
-        // Enviar reset
-        window.db.socket.emit('reset-db');
-        showToast('Reseteando base de datos...');
-    };
 
     // Bulk Import Logic
     ui.btnImportBulk.onclick = () => {
@@ -560,50 +502,31 @@ function setupEventListeners() {
         let count = 0;
 
         lines.forEach(line => {
-            const cols = line.split(/\t|,|;/); // Soporta Tab, Coma o Punto y coma
+            if (!line.trim()) return;
+            
+            // Soporta Tab, Coma o Punto y coma como separadores
+            const cols = line.split(/\t|;|,(?![^"]*")/).map(c => c.trim().replace(/^"|"$/g, ''));
             if (cols.length < 2) return;
 
-            // Nuevo formato: Rank | Nombre | Nacionalidad | ID
+            // Formato esperado: 0:Rank | 1:Nombre Completo | 2:Nacionalidad | 3:ID/WSSA
             let rank = parseInt(cols[0]);
             let fullName = cols[1];
-            let nationality = cols[2] ? cols[2].trim() : '';
+            let nationality = cols[2] || 'CL'; // Default to CL if not provided
             let idCode = cols[3] || '';
 
-            if (!fullName || isNaN(rank)) {
-                // Intento alternativo...
-                const num = cols.find(c => !isNaN(parseInt(c.trim())));
-                const name = cols.find(c => c.trim().length > 2 && isNaN(parseInt(c.trim()))); // Permitir nombres más cortos
-
-                // Buscar la columna que parezca un ID (más de 10 caracteres, combinando números y letras, no parece un nombre)
-                const possibleId = cols.find(c => c.trim().length >= 10 && /\d/.test(c) && /[A-Z]/i.test(c));
-                if (possibleId) {
-                    idCode = possibleId.trim();
-                }
-
-                if (num && name) {
-                    rank = parseInt(num);
-                    fullName = name;
-                }
-            } else if (!idCode) {
-                // Si encontró el nombre y rank en las posiciones esperadas (0 y 1), pero el id no estaba en la posición 3
-                const possibleId = cols.find((c, i) => i > 1 && c.trim().length >= 10 && /\d/.test(c) && /[A-Z]/i.test(c));
-                if (possibleId) {
-                    idCode = possibleId.trim();
-                }
-            }
-
             if (fullName) {
-                // Evitar duplicados por ID externo si existe
-                if (idCode) {
-                    const existingSkaters = window.db.getSkaters();
-                    if (existingSkaters.some(s => s.externalId === idCode && s.categoryId === catId)) {
-                        return;
-                    }
+                // Limpieza de nombre (quitar Rank si se coló en el nombre)
+                if (!isNaN(parseInt(fullName.split(' ')[0]))) {
+                    fullName = fullName.split(' ').slice(1).join(' ');
                 }
 
                 const nameParts = fullName.trim().split(' ');
                 const firstName = nameParts[0];
                 const lastName = nameParts.slice(1).join(' ') || ' ';
+                
+                // Si el rank no es válido, intentar usar el índice o 0
+                if (isNaN(rank)) rank = count + 1;
+
                 window.db.addSkater(firstName, lastName, catId, rank, idCode, nationality);
                 count++;
             }
@@ -615,7 +538,7 @@ function setupEventListeners() {
             renderDashboard();
             showToast(`${count} patinadores importados con éxito.`);
         } else {
-            showToast('No se pudieron procesar los datos. Revisa el formato.', true);
+            showToast('No se pudieron procesar los datos. Revisa el formato (Rank; Nombre; Nat; ID)', true);
         }
     };
 }
@@ -995,6 +918,15 @@ function renderBattlesByCategory(battles, allSkaters) {
                         // Badge de clasificado/eliminado
                         if (bs.qualified) {
                             statusHtml = '<span class="status-badge status-qualified"><i class="ph-fill ph-star"></i> Clasifica</span>';
+                        } else if (battle.phase && (battle.phase.toLowerCase().includes('final')) && !battle.phase.toLowerCase().includes('semi') && !battle.phase.toLowerCase().includes('cuartos')) {
+                            // En la Final mostrar puestos en vez de "Eliminado"
+                            const sorted = [...battle.skaters].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+                            const pos = sorted.findIndex(s => s.skaterId === bs.skaterId) + 1;
+                            const medals = ['🥇', '🥈', '🥉', '🏅'];
+                            const medal = medals[pos - 1] || '🏅';
+                            const posLabels = ['1° Lugar', '2° Lugar', '3° Lugar', '4° Lugar'];
+                            const label = posLabels[pos - 1] || `${pos}° Lugar`;
+                            statusHtml = `<span style="font-size:0.75rem; font-weight:700; color:var(--primary);">${medal} ${label}</span>`;
                         } else {
                             statusHtml = '<span style="font-size:0.7rem; color:var(--text-muted);">Eliminado</span>';
                         }
@@ -1211,10 +1143,14 @@ function updateFamilyCounterAndCombo(skaterId, currentSlotIndex) {
 
 function renderActiveBattle() {
     const db = window.db.getDB();
-    const battle = db.battles.find(b => b.id === currentBattleId);
-    if (!battle) return;
+    // Usar == para permitir comparación entre string (de la UI) y number (de la DB)
+    const battle = db.battles.find(b => b.id == currentBattleId);
+    if (!battle) {
+        console.error("Batalla no encontrada:", currentBattleId);
+        return;
+    }
 
-    const catInfo = db.categories.find(c => c.id === battle.categoryId);
+    const catInfo = db.categories.find(c => c.id == battle.categoryId);
     document.getElementById('active-battle-title').innerText = `${battle.phase} ${battle.heatNumber}`;
     document.getElementById('active-battle-subtitle').innerText = catInfo ? catInfo.name : '';
 
@@ -1236,19 +1172,23 @@ function renderActiveBattle() {
 
     // Si la batalla está completada, mostrar PODIUM en lugar de columnas individuales
     if (battle.status === 'completed') {
-        const podium = showPodium(currentBattleId);
-        const podiumHTML = renderPodiumHTML(podium);
+        try {
+            const podium = showPodium(currentBattleId);
+            const podiumHTML = renderPodiumHTML(podium);
 
-        if (podiumHTML) {
-            const podiumContainer = document.createElement('div');
-            podiumContainer.style.cssText = 'grid-column: 1 / -1; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:1rem;';
-            podiumContainer.innerHTML = `
-                <h3 style="text-align:center; color:var(--primary); margin-bottom:1rem; font-size:1.3rem;">
-                    <i class="ph ph-trophy"></i> Podio - ${battle.phase} ${battle.heatNumber}
-                </h3>
-                ${podiumHTML}
-            `;
-            ui.activeBattleGrid.appendChild(podiumContainer);
+            if (podiumHTML) {
+                const podiumContainer = document.createElement('div');
+                podiumContainer.style.cssText = 'grid-column: 1 / -1; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:1rem;';
+                podiumContainer.innerHTML = `
+                    <h3 style="text-align:center; color:var(--primary); margin-bottom:1rem; font-size:1.3rem;">
+                        <i class="ph ph-trophy"></i> Podio - ${battle.phase} ${battle.heatNumber}
+                    </h3>
+                    ${podiumHTML}
+                `;
+                ui.activeBattleGrid.appendChild(podiumContainer);
+            }
+        } catch (e) {
+            console.error("Error al renderizar podio:", e);
         }
 
         // También mostrar lista completa de resultados
@@ -1264,13 +1204,25 @@ function renderActiveBattle() {
         const sInfo = db.skaters.find(s => s.id === bs.skaterId);
         if (!sInfo) return;
 
+        // Dinámico: 5 slots en la Final, 4 en el resto
+        const maxSlots = battle.phase === 'Final' ? 5 : 4;
+        const myRole = window.db.currentRole;
+        const judging = bs.judging || { 'Juez 1': [], 'Juez 2': [], 'Juez 3': [] };
+        
+        // Verificar si el juez actual ya completó sus slots
+        const mySlotsCount = (judging[myRole] || []).filter(s => s !== null && s !== undefined).length;
+        const isDoneByMe = mySlotsCount >= maxSlots;
+
         const col = document.createElement('div');
-        col.style.cssText = 'background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-md); display:flex; flex-direction:column; overflow:hidden;';
+        let cardStyle = 'background:var(--bg-surface); border:1px solid var(--border);';
+        if (isDoneByMe && battle.status !== 'completed') {
+            cardStyle = 'background:linear-gradient(to bottom, rgba(16, 185, 129, 0.08), var(--bg-surface)); border:1px solid rgba(16, 185, 129, 0.4); box-shadow: 0 4px 12px rgba(0,0,0,0.1);';
+        }
+        col.style.cssText = cardStyle + ' border-radius:var(--radius-md); display:flex; flex-direction:column; overflow:hidden; transition: all 0.3s ease;';
 
         // Header con resultados globales
-        const judging = bs.judging || { 'Juez 1': [null, null, null, null], 'Juez 2': [null, null, null, null], 'Juez 3': [null, null, null, null] };
-        const getSum = (role) => {
-            let scores = (judging[role] || []).map(t => t ? t.finalScore : 0);
+        const getSum = (r) => {
+            let scores = (judging[r] || []).map(t => t ? t.finalScore : 0);
             scores.sort((a, b) => b - a);
             const maxToCount = battle.phase === 'Final' ? 4 : 3;
             return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
@@ -1280,12 +1232,9 @@ function renderActiveBattle() {
         const j2Sum = getSum('Juez 2');
         const j3Sum = getSum('Juez 3');
 
-        // Dinámico: 5 slots en la Final, 4 en el resto
-        const maxSlots = battle.phase === 'Final' ? 5 : 4;
-
         // Solo mostrar el Total Global si el Admin cerró la batalla o si los 3 jueces ya completaron todos los slots
-        const isAllReady = Object.keys(judging).every(role => {
-            const slots = judging[role] || [];
+        const isAllReady = Object.keys(judging).every(roleKey => {
+            const slots = judging[roleKey] || [];
             // Verificar que hayamos llenado hasta maxSlots
             for (let i = 0; i < maxSlots; i++) if (slots[i] === null || slots[i] === undefined) return false;
             return true;
@@ -1353,82 +1302,97 @@ function renderActiveBattle() {
             </div>
         `;
 
-        // Slots de Jueceo - Mostrar SOLO los del juez actual
+        // Slots de Jueceo - Mostrar SOLO los del juez actual (o todos si finalizó)
         let slotsHtml = '<div style="padding:1rem; flex:1; display:flex; flex-direction:column; gap:0.6rem; background:rgba(255,255,255,0.02);">';
-        const myRole = window.db.currentRole;
-        const mySlots = judging[myRole] || [];
+        const rolesToShow = (battle.status === 'completed') ? ['Juez 1', 'Juez 2', 'Juez 3'] : [myRole];
 
-        // Identificar mejores N para marcar descartes
-        let slotsWithScores = mySlots
-            .map((slide, index) => ({ slide, index }))
-            .filter(item => item.slide !== null)
-            .map(item => ({ index: item.index, score: item.slide.finalScore }));
-        slotsWithScores.sort((a, b) => b.score - a.score);
-        const topIndices = slotsWithScores.slice(0, maxSlots === 5 ? 4 : 3).map(item => item.index);
+        rolesToShow.forEach(role => {
+            if (!role) return;
+            const roleSlots = judging[role] || [];
+            
+            // Si hay datos para este juez, mostrar sección
+            if (roleSlots.some(s => s !== null && s !== undefined) || rolesToShow.length === 1) {
+                // Título de la sección de este juez
+                slotsHtml += `<div style="text-align:left; margin-bottom:0.5rem; padding-bottom:0.3rem; border-bottom:1px solid var(--border); margin-top:0.5rem;">
+                    <span style="font-size:0.65rem; text-transform:uppercase; color:var(--primary); letter-spacing:1px; font-weight:700;">
+                        <i class="ph-fill ph-${role === 'Juez 1' ? 'shield-star' : 'user'}"></i>
+                        Registro de ${role}
+                    </span>
+                </div>`;
 
-        // Título de la sección
-        slotsHtml += `<div style="text-align:center; margin-bottom:0.5rem; padding-bottom:0.5rem; border-bottom:1px solid var(--border);">
-            <span style="font-size:0.7rem; text-transform:uppercase; color:var(--text-muted); letter-spacing:1px;">
-                <i class="ph ph-${myRole === 'Juez 1' ? 'shield-star' : 'user'}"></i>
-                Registro de ${myRole}
-            </span>
-        </div>`;
+                // Identificar mejores N para marcar descartes (solo para este juez)
+                const slotsWithScores = roleSlots
+                    .map((slide, index) => ({ slide, index }))
+                    .filter(item => item.slide !== null)
+                    .map(item => ({ index: item.index, score: item.slide.finalScore }));
+                slotsWithScores.sort((a, b) => b.score - a.score);
+                const topIndices = slotsWithScores.slice(0, maxSlots === 5 ? 4 : 3).map(item => item.index);
 
-        for (let i = 0; i < maxSlots; i++) {
-            const slide = mySlots[i];
-            if (!slide) {
-                // Slot Vacío
-                slotsHtml += `
-                    <button class="btn-empty-slot" onclick="openJudgeModal(${sInfo.id}, '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"
-                            style="width:100%; border:1px dashed var(--border); background:none; color:var(--text-muted); padding:1rem; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; transition:all 0.2s;">
-                        <i class="ph ph-plus-circle" style="font-size:1rem; margin-right:0.3rem; vertical-align:middle;"></i>
-                        Ejecución ${i + 1}: <span style="opacity:0.5;">+ Añadir</span>
-                    </button>
-                `;
-            } else {
-                // Slot Lleno
-                const isFail = slide.isFail;
-                const isCounted = topIndices.includes(i);
-                const isDropped = !isCounted;
+                for (let i = 0; i < maxSlots; i++) {
+                    const slide = roleSlots[i];
+                    if (!slide) {
+                        // Slot Vacío (Solo habilitar si es el rol actual y NO está completado)
+                        if (role === myRole && battle.status !== 'completed') {
+                            slotsHtml += `
+                                <button class="btn-empty-slot" onclick="openJudgeModal(${sInfo.id}, '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"
+                                        style="width:100%; border:1px dashed var(--border); background:none; color:var(--text-muted); padding:0.6rem; border-radius:var(--radius-sm); cursor:pointer; font-size:0.75rem; transition:all 0.2s;">
+                                    <i class="ph ph-plus-circle" style="font-size:0.9rem; margin-right:0.3rem; vertical-align:middle;"></i>
+                                    Slot ${i + 1}: <span style="opacity:0.5;">+ Añadir</span>
+                                </button>
+                            `;
+                        } else if (rolesToShow.length === 1) {
+                            // Si solo se muestra uno y está vacío, mostrar placeholder
+                            slotsHtml += `<div style="font-size:0.7rem; color:var(--text-muted); font-style:italic; padding-left:0.5rem;">Vacio</div>`;
+                        }
+                    } else {
+                        // Slot Lleno
+                        const isFail = slide.isFail;
+                        const isCounted = topIndices.includes(i);
+                        const isDropped = !isCounted;
 
-                const adj = slide.adjustment || 0;
-                const dist = slide.distance || 2.5;
-                let badgeColor = isDropped ? 'var(--text-muted)' : (isFail ? 'var(--danger)' : (adj >= 0 ? 'var(--accent)' : 'var(--primary)'));
-                let adjText = isFail ? 'Falla (0.0)' : (adj === 0 ? '' : (adj > 0 ? `+${adj.toFixed(1)}` : adj.toFixed(1)));
+                        const adj = slide.adjustment || 0;
+                        const dist = slide.distance || 2.5;
+                        let badgeColor = isDropped ? 'var(--text-muted)' : (isFail ? 'var(--danger)' : (adj >= 0 ? 'var(--accent)' : 'var(--primary)'));
+                        let adjText = isFail ? 'Falla (0.0)' : (adj === 0 ? '' : (adj > 0 ? `+${adj.toFixed(1)}` : adj.toFixed(1)));
 
-                let opacityStyle = isDropped ? 'opacity: 0.6; filter: grayscale(100%);' : '';
-                let droppedBadge = isDropped ? '<span style="position:absolute; bottom: -8px; right: 5px; background:var(--text-muted); color:var(--bg-app); font-size:0.6rem; font-weight:bold; padding:2px 5px; border-radius:4px; letter-spacing:0.5px; z-index:2;">DESCARTADO</span>' : '';
-                let countedBadge = isCounted && slotsWithScores.length > (maxSlots === 5 ? 4 : 3) ? '<i class="ph-fill ph-check-circle" style="color:var(--accent); font-size:1.1rem; margin-left:0.4rem;" title="Puntaje contabilizado"></i>' : '';
+                        let opacityStyle = isDropped ? 'opacity: 0.5; filter: grayscale(100%);' : '';
+                        let droppedBadge = isDropped ? '<span style="position:absolute; bottom: -8px; right: 5px; background:var(--text-muted); color:var(--bg-app); font-size:0.55rem; font-weight:bold; padding:1px 4px; border-radius:3px; letter-spacing:0.5px; z-index:2;">DESC.</span>' : '';
+                        let countedBadge = isCounted && slotsWithScores.length > (maxSlots === 5 ? 4 : 3) ? '<i class="ph-fill ph-check-circle" style="color:var(--accent); font-size:1rem; margin-left:0.3rem;" title="Contabilizado"></i>' : '';
 
-                // Stop bonus display
-                let stopBonusText = '';
-                if (slide.stopLevel && slide.stopLevel > 0 && !slide.isFail) {
-                    const stopLabels = { 1: 'Nivel 1', 2: 'Nivel 2', 3: 'Nivel 3' };
-                    const stopBonus = slide.stopBonus || 0;
-                    stopBonusText = `<span style="color:#F59E0B; font-weight:600;"><i class="ph-fill ph-hand-palm"></i> Stop ${stopLabels[slide.stopLevel]} (+${stopBonus})</span>`;
-                }
+                        // Stop bonus display
+                        let stopBonusText = '';
+                        if (slide.stopLevel && slide.stopLevel > 0 && !slide.isFail) {
+                            const stopLabels = { 1: 'N1', 2: 'N2', 3: 'N3' };
+                            stopBonusText = `<span style="color:#F59E0B; font-weight:600;"><i class="ph-fill ph-hand-palm"></i> Stop ${stopLabels[slide.stopLevel]}</span>`;
+                        }
 
-                slotsHtml += `
-                    <div style="background:var(--bg-app); border:1px solid var(--border); border-left:4px solid ${badgeColor}; padding:0.8rem; border-radius:var(--radius-sm); position:relative; cursor:pointer; transition:all 0.2s; margin-bottom:0.4rem; ${opacityStyle}"
-                         onclick="openJudgeModal(${sInfo.id}, '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})">
-                        ${droppedBadge}
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <strong style="font-size:0.9rem; ${isFail ? 'text-decoration:line-through; color:var(--danger);' : ''}">${slide.name}</strong>
-                            <div style="display:flex; align-items:center;">
-                                <strong style="color:${isDropped ? 'var(--text-muted)' : badgeColor}; font-size:1.1rem; ${isDropped ? 'text-decoration:line-through;' : ''}">${slide.finalScore.toFixed(1)}</strong>
-                                ${countedBadge}
+                        // El botón de eliminar SOLO si es el rol actual y NO está completado
+                        const deleteBtn = (role === myRole && battle.status !== 'completed') ? `<button onclick="event.stopPropagation(); deleteRecordedTrick(${sInfo.id}, ${i})" style="position:absolute; top: -5px; right: -5px; background:var(--danger); color:white; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:5;"><i class="ph ph-x"></i></button>` : '';
+
+                        slotsHtml += `
+                            <div style="background:var(--bg-app); border:1px solid var(--border); border-left:3px solid ${badgeColor}; padding:0.6rem; border-radius:var(--radius-sm); position:relative; cursor:${(role === myRole && battle.status !== 'completed') ? 'pointer' : 'default'}; transition:all 0.2s; margin-bottom:0.2rem; ${opacityStyle}"
+                                 ${(role === myRole && battle.status !== 'completed') ? `onclick="openJudgeModal(${sInfo.id}, '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"` : ''}>
+                                ${droppedBadge}
+                                ${deleteBtn}
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="font-size:0.8rem; ${isFail ? 'text-decoration:line-through; color:var(--danger);' : ''}">${slide.name}</strong>
+                                    <div style="display:flex; align-items:center;">
+                                        <strong style="color:${isDropped ? 'var(--text-muted)' : badgeColor}; font-size:0.95rem;">${slide.finalScore.toFixed(1)}</strong>
+                                        ${countedBadge}
+                                    </div>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.65rem; color:var(--text-muted); margin-top:0.2rem;">
+                                    <span>${dist.toFixed(1)}m | ${stopBonusText || 'No Stop'}</span>
+                                    <span>${adjText ? 'Adj: ' + adjText : ''}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">
-                            <span>Base: ${slide.baseScore} | Dist: ${dist.toFixed(1)}m</span>
-                            <span>${adjText ? 'Adj: ' + adjText : ''}</span>
-                        </div>
-                        ${stopBonusText ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">${stopBonusText}</div>` : ''}
-                        <button onclick="event.stopPropagation(); deleteRecordedTrick(${sInfo.id}, ${i})" style="position:absolute; top: -5px; right: -5px; background:var(--danger); color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:5;"><i class="ph ph-x"></i></button>
-                    </div>
-                `;
+                        `;
+                    }
+                }
             }
-        }
+        });
+
+        slotsHtml += '</div>';
 
         slotsHtml += '</div>';
 
@@ -1521,15 +1485,19 @@ function renderBrackets() {
                     : '';
                 const bg = isQualified ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.05)';
                 const positionBadge = battle.status === 'completed'
-                    ? (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '')
+                    ? (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx === 3 ? '4º' : '')
                     : '';
+                
+                const finalMark = battle.phase === 'Final' && battle.status === 'completed'
+                    ? `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">Posición: ${idx + 1}º</span>`
+                    : mark;
 
                 skatersHtml += `
                     <div style="padding:0.5rem; background:${bg}; border-radius:4px; margin-bottom:0.3rem; font-size:0.85rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
                         <div style="display:flex; align-items:center; gap:0.4rem; flex:1;">
                             <span style="font-size:0.75rem; min-width:16px;">${positionBadge}</span>
                             <span style="flex:1;">${sInfo ? sInfo.firstName + ' ' + sInfo.lastName : 'TBD'}</span>
-                            ${mark}
+                            ${finalMark}
                         </div>
                         ${battle.status === 'completed' ? `<span style="font-weight:700; color:var(--primary); font-size:0.8rem;">${bs.totalScore.toFixed(2)}</span>` : ''}
                     </div>
@@ -1627,10 +1595,27 @@ function exportTournamentCSV() {
             if (result) {
                 const judging = result.judging || {};
                 const getSumExport = (role) => {
-                    let scores = (judging[role] || []).map(t => t ? t.finalScore : 0);
+                    let tricks = (judging[role] || []);
+                    let validTricks = tricks.filter(t => t && !t.isFail && t.finalScore > 0);
+                    let scores = validTricks.map(t => t.finalScore);
                     scores.sort((a, b) => b - a);
                     const maxToCount = lastBattle.phase === 'Final' ? 4 : 3;
-                    return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
+                    const topScores = scores.slice(0, maxToCount);
+                    const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
+                    
+                    // Variety Multiplier (Sync with db.js)
+                    const families = new Set(validTricks.map(t => {
+                         if (!t.family) return '';
+                         const m = t.family.match(/^(F\d+)/);
+                         return m ? m[1] : '';
+                    }));
+                    const numFamilies = families.size;
+                    let m_var = 1.0;
+                    if (numFamilies === 3) m_var = 1.05;
+                    else if (numFamilies >= 4) m_var = 1.10;
+                    // Note: Penalty of 0.70 was removed as per scoring fix
+                    
+                    return Math.round(baseTotal * m_var * 100) / 100;
                 };
                 j1Score = getSumExport('Juez 1');
                 j2Score = getSumExport('Juez 2');
@@ -2118,8 +2103,11 @@ function exportTournamentCSV() {
     if (window.db && window.db.socket) {
         window.db.socket.emit('export-pdf', { html: htmlContent }, (response) => {
             if (response && response.success) {
-                const pdfData = new Uint8Array(response.buffer);
-                const blob = new Blob([pdfData], { type: 'application/pdf' });
+                // Reconstruir el PDF desde base64 (evita corrupción de Buffer en Socket.IO)
+                const binaryStr = atob(response.base64);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+                const blob = new Blob([bytes], { type: 'application/pdf' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.setAttribute("href", url);
@@ -2254,3 +2242,20 @@ function launchConfetti() {
 
 // Boot up
 document.addEventListener('DOMContentLoaded', init);
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed', err));
+    });
+}
+
+// Online/Offline detection
+window.addEventListener('online', () => {
+    showToast('Conexión restaurada', false);
+    document.body.classList.remove('is-offline');
+});
+window.addEventListener('offline', () => {
+    showToast('⚠️ CONEXIÓN PERDIDA. Revisa tu internet.', true);
+    document.body.classList.add('is-offline');
+});

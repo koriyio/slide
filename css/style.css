@@ -1876,4 +1876,26 @@ select:hover {
         height: 200px !important;
     }
 }
+
+/* --- OFFLINE INDICATOR --- */
+body.is-offline::before {
+    content: "⚠️ MODO SIN CONEXIÓN - REVISA TU INTERNET";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #dc2626;
+    color: white;
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    z-index: 9999;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+body.is-offline .sidebar, 
+body.is-offline .main-content {
+    margin-top: 2rem;
+}
 

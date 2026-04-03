@@ -398,8 +398,11 @@ class SlideStorage {
             const trickBase = this.getTricks().find(t => t.id === trickId);
             if (!trickBase) return false;
 
-            // El cálculo finalScore se hace en el servidor ahora (con combos y stops)
-            const finalScore = isFail ? 0 : Math.max(0, trickBase.baseScore + adjValue + distanceBonus);
+            const stopBonuses = { 0: 0, 1: 2.0, 2: 4.0, 3: 6.0 };
+            const stopBonus = stopBonuses[stopLevelInt] || 0;
+            
+            // Cálculo local debe coincidir con el servidor (db.js)
+            const finalScore = isFail ? 0 : Math.max(0, trickBase.baseScore + adjValue + distanceBonus + stopBonus);
             performedTrick = {
                 id: Date.now(),
                 trickId: trickId,
@@ -409,8 +412,8 @@ class SlideStorage {
                 distance: distValue,
                 distanceBonus: distanceBonus,
                 stopLevel: stopLevelInt,
-                stopBonus: 0, // Se calcula en el servidor
-                finalScore: finalScore,
+                stopBonus: stopBonus,
+                finalScore: Math.round(finalScore * 100) / 100,
                 isFail: isFail,
                 timestamp: new Date().toISOString()
             };

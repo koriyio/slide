@@ -1,8 +1,44 @@
-# 🚀 Guía de Despliegue en Render
+# 🚀 Guía de Despliegue en Render + Supabase
 
-## Paso a Paso para Subir Slide Battle a Render
+## Arquitectura
 
-### 1. Preparar el Repositorio en GitHub
+- **Frontend + Backend**: Render (Node.js + Express + Socket.io)
+- **Base de Datos**: Supabase (PostgreSQL) - datos persistentes en la nube
+
+---
+
+## Paso 0: Configurar Supabase (Base de Datos)
+
+### a) Crear cuenta en Supabase
+1. Ve a https://supabase.com
+2. Haz clic en **"Start your project"**
+3. Inicia sesión con GitHub (recomendado)
+
+### b) Crear un nuevo Proyecto
+1. Haz clic en **"New Project"**
+2. Selecciona tu organización (o crea una)
+3. Configura el proyecto:
+   - **Name**: `slide-battle`
+   - **Database Password**: Elige una contraseña segura (¡guárdala!)
+   - **Region**: `South America (Brazil)` - más cercano a Chile
+4. Haz clic en **"Create new project"** (toma ~2 minutos)
+
+### c) Obtener la Connection String
+1. Ve a **Project Settings** (ícono de engranaje, barra lateral izquierda)
+2. Haz clic en **Database** en la sección "Configuration"
+3. Busca la sección **Connection string** > **URI**
+4. Selecciona **Node.js** como formato
+5. Copia la URL (tendrá este formato):
+   ```
+   postgresql://postgres:[TU_PASSWORD]@db.xxxxxxxxxxxxx.supabase.co:5432/postgres
+   ```
+6. **IMPORTANTE**: Reemplaza `[TU_PASSWORD]` con la contraseña que configuraste
+
+> ⚠️ **Nota**: Supabase usa SSL por defecto. La aplicación ya está configurada para usar SSL en producción.
+
+---
+
+## Paso 1: Preparar el Repositorio en GitHub
 
 #### a) Si aún no has subido el código:
 
@@ -73,6 +109,9 @@ Haz clic en **"Advanced"** y agrega las siguientes variables:
 NODE_ENV=production
 PORT=3005
 
+# Base de datos - Supabase (Paso 0)
+DATABASE_URL=postgresql://postgres:TuPasswordReal@db.xxxxx.supabase.co:5432/postgres
+
 # Credenciales Juez 1 (Admin)
 JUEZ1_USER=Slide
 JUEZ1_PASS=CambiaEstaContraseña123
@@ -89,8 +128,9 @@ JUEZ3_PASS=CambiaEstaContraseña789
 CORS_ORIGIN=https://slide-battle.onrender.com
 ```
 
-> ⚠️ **IMPORTANTE:** 
-> - Cambia las contraseñas por defecto
+> ⚠️ **IMPORTANTE:**
+> - `DATABASE_URL` es **obligatorio** - sin esto, el servidor no iniciará
+> - Cambia las contraseñas de los jueces por defecto
 > - La URL de `CORS_ORIGIN` la obtendrás después del primer despliegue
 
 #### e) Haz clic en **"Create Web Service"**
@@ -199,8 +239,17 @@ Render detectará el push y desplegará automáticamente en 2-3 minutos.
 ### "Service Crashed"
 1. Revisa los **Logs** en Render
 2. Errores comunes:
+   - `DATABASE_URL no está definida` → Agrega la variable de entorno DATABASE_URL
+   - `connect ECONNREFUSED` → Verifica que la DATABASE_URL sea correcta
+   - `password authentication failed` → Verifica la contraseña en DATABASE_URL
    - Puerto ya en uso → Asegúrate de que `PORT=3005` en variables de entorno
    - Error de sintaxis en `server.js` → Revisa la línea mencionada en el log
+
+### "Error de base de datos" / "DB Error"
+1. Verifica que `DATABASE_URL` esté configurado correctamente en Render
+2. Asegúrate de que el proyecto de Supabase esté activo
+3. Verifica que la contraseña en la URL sea correcta
+4. En Supabase, ve a **Settings > Database** y verifica la conexión
 
 ### "CORS Error" en la consola del navegador
 1. Verifica que `CORS_ORIGIN` esté configurado correctamente
@@ -238,6 +287,35 @@ Si necesitas más recursos:
    - 0.5 CPU
    - Sin hibernación
    - 3000 horas/mes
+
+---
+
+## ✅ Plan de Verificación
+
+Después de desplegar, verifica el funcionamiento completo:
+
+### Verificación Manual
+
+1. **Conexión con Supabase**
+   - Inicia el servidor localmente con `DATABASE_URL` configurado
+   - Verifica en los logs: `[DB] Esquema de PostgreSQL inicializado correctamente.`
+   - Confirma que las categorías se cargan automáticamente
+
+2. **Flujo Completo**
+   - [ ] **Crear patinador**: Login como Juez 1 → Agregar patinador → Verificar que persiste
+   - [ ] **Crear batalla**: Generar heats para una categoría → Verificar que se crean
+   - [ ] **Guardar truco**: Login como juez → Registrar un truco → Verificar score
+   - [ ] **Generar PDF**: Exportar resultados → Verificar que el PDF se genera
+
+3. **Persistencia de Datos**
+   - Reinicia el servicio en Render (Manual Deploy)
+   - Confirma que los patinadores, batallas y trucos siguen existiendo
+   - Los datos deben persistir entre reinicios gracias a Supabase
+
+### Respuestas a Preguntas de Seguridad
+
+- **SSL**: Configurado con `rejectUnauthorized: false` en producción para compatibilidad con Supabase
+- **SQLite**: Eliminado completamente del servidor - solo PostgreSQL
 
 ---
 
