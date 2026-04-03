@@ -1,4 +1,6 @@
 const { Pool } = require('pg');
+const dns = require('dns');
+const url = require('url');
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -44,9 +46,23 @@ class SlideDB {
             console.error('[DB] DATABASE_URL no está definida en las variables de entorno.');
         }
 
+        // Parse connection string to force IPv4 (Render free tier doesn't support IPv6)
+        const parsed = url.parse(connectionString);
+        const host = parsed.hostname;
+        const port = parsed.port || 5432;
+        const user = parsed.auth ? parsed.auth.split(':')[0] : 'postgres';
+        const password = parsed.auth ? parsed.auth.split(':')[1] : '';
+        const database = (parsed.pathname || '').replace(/^\//, '') || 'postgres';
+
         this.pool = new Pool({
-            connectionString: connectionString,
-            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+            host: host,
+            port: parseInt(port),
+            user: user,
+            password: password,
+            database: database,
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+            // Force IPv4 resolution
+            family: 4
         });
 
         this._ready = this.init();
@@ -206,7 +222,7 @@ class SlideDB {
         // Eliminar batallas existentes de la categoría
         const battlesToDelRes = await this.pool.query('SELECT id FROM battles WHERE category_id = $1', [categoryId]);
         const ids = battlesToDelRes.rows.map(r => r.id);
-        
+
         if (ids.length > 0) {
             await this.pool.query('DELETE FROM battle_skaters WHERE battle_id = ANY($1)', [ids]);
             await this.pool.query('DELETE FROM battles WHERE id = ANY($1)', [ids]);
@@ -223,7 +239,7 @@ class SlideDB {
              WHERE bs.battle_id = $1 AND bs.skater_id = $2`,
             [battleId, skaterId]
         );
-        
+
         if (res.rows.length === 0) return { success: false };
 
         const row = res.rows[0];
@@ -249,7 +265,7 @@ class SlideDB {
             const distance = parseFloat(trickPerformed.distance) || 2.5;
             const distanceBonus = Math.max(0, Math.floor((distance - 2.5) / 0.5) * 1);
             const finalScore = (trickPerformed.baseScore || 0) + adjustment + distanceBonus + stopBonus;
-            
+
             trickPerformed.stopBonus = stopBonus;
             trickPerformed.distanceBonus = distanceBonus;
             trickPerformed.finalScore = Math.max(0, Math.round(finalScore * 100) / 100);
@@ -280,7 +296,7 @@ class SlideDB {
              WHERE bs.battle_id = $1 AND bs.skater_id = $2`,
             [battleId, skaterId]
         );
-        
+
         if (res.rows.length === 0) return null;
 
         let judging = res.rows[0].judging;
