@@ -3,8 +3,8 @@ const ASSETS = [
     './',
     './index.html',
     './css/style.css',
-    './js/app.js',
-    './js/storage.js',
+    './js/app.js?v=1.2.0',
+    './js/storage.js?v=1.2.0',
     './img/logo.png',
     'https://unpkg.com/@phosphor-icons/web',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
