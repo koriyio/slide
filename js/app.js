@@ -1639,7 +1639,7 @@ function exportTournamentCSV() {
         };
 
         if (skaterBattles.length > 0) {
-            // Obtener la fase m├ís avanzada
+            // Obtener la fase más avanzada
             const lastBattle = skaterBattles.reduce((last, b) =>
                 (phaseMap[b.phase] || 0) > (phaseMap[last.phase] || 0) ? b : last, skaterBattles[0]);
             const result = lastBattle.skaters.find(s => s.skaterId === sk.id);
@@ -1673,7 +1673,6 @@ function exportTournamentCSV() {
                     let m_var = 1.0;
                     if (numFamilies === 3) m_var = 1.05;
                     else if (numFamilies >= 4) m_var = 1.10;
-                    // Note: Penalty of 0.70 was removed as per scoring fix
 
                     return Math.round(baseTotal * m_var * 100) / 100;
                 };
@@ -1710,119 +1709,34 @@ function exportTournamentCSV() {
     });
 
     // Para cada categoría, calcular posiciones
-    Object.keys(byCategory).forEach(catId => {
-        const categorySkaters = byCategory[catId];
-
-        // 1. Finalistas (posiciones 1-4)
-        const finalistas = categorySkaters.filter(s => s.finalPhase === 'Final');
-        if (finalistas.length > 0) {
-            // Obtener resultados de la final
-            const finalBattle = battles.find(b => b.phase === 'Final' && b.categoryId === catId);
-            if (finalBattle && finalBattle.status === 'completed') {
-                const sorted = [...finalBattle.skaters].sort((a, b) => b.totalScore - a.totalScore);
-                sorted.forEach((s, idx) => {
-                    const skater = categorySkaters.find(sk => sk.id === s.skaterId);
-                    if (skater) {
-                        skater.finalPosition = idx + 1;
-                    }
-                });
-            }
-        }
-
-        // 2. Semifinalistas no clasificados a final (posiciones 5-8)
-        const semifinalistas = categorySkaters.filter(s => s.finalPhase === 'Semifinal' && !s.isQualified);
-        if (semifinalistas.length > 0) {
-            // Obtener todas las semifinales
-            const semiBattles = battles.filter(b => (b.phase === 'Semifinal' || b.phase === 'Semi-Final' || b.phase === 'Semifinales') && b.categoryId === catId && b.status === 'completed');
-            const allSemiResults = [];
-            semiBattles.forEach(b => {
-                b.skaters.forEach(s => {
-                    const skater = categorySkaters.find(sk => sk.id === s.skaterId);
-                    if (skater && !skater.isQualified) {
-                        allSemiResults.push({ skaterId: s.skaterId, totalScore: s.totalScore });
-                    }
-                });
-            });
-            allSemiResults.sort((a, b) => b.totalScore - a.totalScore);
-            allSemiResults.forEach((s, idx) => {
-                const skater = categorySkaters.find(sk => sk.id === s.skaterId);
-                if (skater && skater.finalPosition === null) {
-                    skater.finalPosition = idx + 5;
-                }
-            });
-        }
-
-        // 3. Cuartos no clasificados a semifinal (posiciones 9-12)
-        const cuartos = categorySkaters.filter(s => s.finalPhase === 'Cuartos' && !s.isQualified);
-        if (cuartos.length > 0) {
-            const quarterBattles = battles.filter(b => (b.phase === 'Cuartos' || b.phase === 'Quarter-Final' || b.phase === 'Cuartos de Final') && b.categoryId === catId && b.status === 'completed');
-            const allQuarterResults = [];
-            quarterBattles.forEach(b => {
-                b.skaters.forEach(s => {
-                    const skater = categorySkaters.find(sk => sk.id === s.skaterId);
-                    if (skater && !skater.isQualified) {
-                        allQuarterResults.push({ skaterId: s.skaterId, totalScore: s.totalScore });
-                    }
-                });
-            });
-            allQuarterResults.sort((a, b) => b.totalScore - a.totalScore);
-            allQuarterResults.forEach((s, idx) => {
-                const skater = categorySkaters.find(sk => sk.id === s.skaterId);
-                if (skater && skater.finalPosition === null) {
-                    skater.finalPosition = idx + 9;
-                }
-            });
-        }
-
-        // 4. Preliminar no clasificados a cuartos (posiciones 13+)
-        const preliminar = categorySkaters.filter(s => s.finalPhase === 'Preliminar' && !s.isQualified);
-        if (preliminar.length > 0) {
-            const prelimBattles = battles.filter(b => (b.phase === 'Preliminar' || b.phase === 'Heat') && b.categoryId === catId && b.status === 'completed');
-            const allPrelimResults = [];
-            prelimBattles.forEach(b => {
-                b.skaters.forEach(s => {
-                    const skater = categorySkaters.find(sk => sk.id === s.skaterId);
-                    if (skater && !skater.isQualified) {
-                        allPrelimResults.push({ skaterId: s.skaterId, totalScore: s.totalScore });
-                    }
-                });
-            });
-            allPrelimResults.sort((a, b) => b.totalScore - a.totalScore);
-            allPrelimResults.forEach((s, idx) => {
-                const skater = categorySkaters.find(sk => sk.id === s.skaterId);
-                if (skater && skater.finalPosition === null) {
-                    skater.finalPosition = idx + 13;
-                }
-            });
-        }
-
-        // 5. Clasificados que no tienen posiciión (usan posiciión por fase)
-        categorySkaters.forEach(sk => {
-            if (sk.finalPosition === null && sk.isQualified) {
-                if (sk.finalPhase === 'Final') sk.finalPosition = sk.isQualified ? 4 : 13;
-                else if (sk.finalPhase === 'Semifinal') sk.finalPosition = 8;
-                else if (sk.finalPhase === 'Cuartos') sk.finalPosition = 12;
-            }
+    Object.values(byCategory).forEach(catSkaters => {
+        catSkaters.sort((a, b) => {
+            if (b.finalPhaseNum !== a.finalPhaseNum) return b.finalPhaseNum - a.finalPhaseNum;
+            if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+            return (a.seedNumber || 999) - (b.seedNumber || 999);
+        });
+        catSkaters.forEach((sk, idx) => {
+            sk.finalPosition = idx + 1;
         });
     });
 
-    // ORDENAR POR: 1) Categoría, 2) Fase alcanzada (Final primero), 3) Puntaje total, 4) Posiciión final
-    let sortedSkaters = skaterResults.sort((a, b) => {
+    // Ordenar resultados: 1) Categoría, 2) Fase, 3) Puntaje, 4) Posición
+    const sortedSkaters = [...skaterResults].sort((a, b) => {
         // Primero por categoría
-        if (a.categoryId !== b.categoryId) return a.categoryId.localeCompare(b.categoryId);
-
-        // Luego por fase alcanzada (Final > Semifinal > Cuartos > Preliminar)
+        if (a.categoryName !== b.categoryName) return a.categoryName.localeCompare(b.categoryName);
+        
+        // Luego por fase alcanzada (Final primero)
         if (b.finalPhaseNum !== a.finalPhaseNum) return b.finalPhaseNum - a.finalPhaseNum;
 
-        // Luego por puntaje total (m├ís alto primero)
+        // Luego por puntaje total (más alto primero)
         if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
 
-        // Luego por posiciión final del grupo (si existe)
+        // Luego por posición final del grupo (si existe)
         if (a.finalPosition && b.finalPosition) return a.finalPosition - b.finalPosition;
         if (a.finalPosition && !b.finalPosition) return -1;
         if (!a.finalPosition && b.finalPosition) return 1;
 
-        // Finalmente por seed (m├ís bajo primero)
+        // Finalmente por seed (más bajo primero)
         return (a.seedNumber || 999) - (b.seedNumber || 999);
     });
 
@@ -2044,28 +1958,28 @@ function exportTournamentCSV() {
         <div class="header-content">
             <img src="${logoUrl}" class="league-logo" alt="Logo Liga Chilena">
             <div class="header-text">
-                <h1>­ƒÅå LIGA CHILENA DE INLINE FREESTYLE</h1>
+                <h1>LIGA CHILENA DE INLINE FREESTYLE</h1>
                 <p>Campeonato Nacional 2026 - Reporte Oficial de Resultados</p>
-                <div class="league-badge">⭐ Temporada 2026 ⭐</div>
+                <div class="league-badge">TEMPORADA 2026</div>
             </div>
         </div>
     </div>
-    <div class="date">­ƒôà Generado: ${currentDate}</div>
+    <div class="date">Generado: ${currentDate}</div>
 
     <table>
         <thead>
             <tr>
                 <th style="width: 50px;">#</th>
-                <th style="width: 80px;">Categoría</th>
-                <th style="width: 80px;">ID/WSSA</th>
-                <th style="width: 200px;">Patinador</th>
-                <th style="width: 50px;">Seed</th>
-                <th style="width: 80px;">Fase</th>
-                <th style="width: 70px;">Juez 1</th>
-                <th style="width: 70px;">Juez 2</th>
-                <th style="width: 70px;">Juez 3</th>
+                <th style="width: 80px;">CATEGORÍA</th>
+                <th style="width: 120px;">ID/WSSA</th>
+                <th style="width: 200px;">PATINADOR</th>
+                <th style="width: 50px;">SEED</th>
+                <th style="width: 80px;">FASE</th>
+                <th style="width: 70px;">JUEZ 1</th>
+                <th style="width: 70px;">JUEZ 2</th>
+                <th style="width: 70px;">JUEZ 3</th>
                 <th style="width: 80px;">TOTAL</th>
-                <th style="width: 80px;">Estado</th>
+                <th style="width: 80px;">ESTADO</th>
             </tr>
         </thead>
         <tbody>
@@ -2077,7 +1991,7 @@ function exportTournamentCSV() {
     sortedSkaters.forEach(sk => {
         const categoryName = sk.categoryName;
 
-        // Si cambia la categoría, agregar separador y resetear posiciión
+        // Si cambia la categoría, agregar separador y resetear posición
         if (categoryName !== currentCategory) {
             currentCategory = categoryName;
             categoryPosition = 1;
@@ -2092,7 +2006,7 @@ function exportTournamentCSV() {
         }
 
         // Usar los datos ya calculados
-        let maxPhase = sk.finalPhase === 'Final' ? '­ƒÅå Final' :
+        let maxPhase = sk.finalPhase === 'Final' ? 'Final' :
             (sk.finalPhase === 'Semifinal' || sk.finalPhase === 'Semi-Final' || sk.finalPhase === 'Semifinales') ? 'Semifinal' :
                 (sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' || sk.finalPhase === 'Cuartos de Final') ? 'Cuartos' : 'Preliminar';
 
@@ -2114,11 +2028,11 @@ function exportTournamentCSV() {
         // Estado
         let statusHtml = '-';
         if (categoryPosition === 1 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-1">­ƒÑç 1°</span>';
+            statusHtml = '<span class="position pos-1">1°</span>';
         } else if (categoryPosition === 2 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-2">­ƒÑê 2°</span>';
+            statusHtml = '<span class="position pos-2">2°</span>';
         } else if (categoryPosition === 3 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-3">­ƒÑë 3°</span>';
+            statusHtml = '<span class="position pos-3">3°</span>';
         } else {
             statusHtml = `<span class="position pos-default" style="background: #e2e8f0; color: #64748B;">${categoryPosition}°</span>`;
         }
@@ -2145,12 +2059,12 @@ function exportTournamentCSV() {
     </table>
 
     <div class="footer">
-        <p class="footer-strong">­ƒÅå LIGA CHILENA DE INLINE FREESTYLE - TEMPORADA 2026</p>
-        <p>Este documento es un reporte oficial de resultados. Para consultas, contactar a la organizaciión.</p>
+        <p class="footer-strong">LIGA CHILENA DE INLINE FREESTYLE - TEMPORADA 2026</p>
+        <p>Este documento es un reporte oficial de resultados. Para consultas, contactar a la organización.</p>
         <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #0039A6;">
             <p style="font-size: 10px; color: #666;">
-                ­ƒÆ╗ Desarrollado por <strong>Rodrigo Aburto Pereira</strong> - Técnico de Nivel Superior en Inform├ítica<br>
-                <span style="color: #D52B1E; font-weight: 700;">­ƒÜÇ VERSI├ôN 1.0</span>
+                Desarrollado por <strong>Rodrigo Aburto Pereira</strong> - Técnico de Nivel Superior en Informática<br>
+                <span style="color: #D52B1E; font-weight: 700;">VERSIÓN 1.0</span>
             </p>
         </div>
         <img src="${logoUrl}" style="height: 60px; margin-top: 15px;" alt="Logo Liga Chilena">
@@ -2158,12 +2072,12 @@ function exportTournamentCSV() {
 </body>
 </html>`;
 
-    showToast('Generando PDF, por favor espera... ⏳');
+    showToast('Generando PDF, por favor espera...');
 
     if (window.db && window.db.socket) {
         window.db.socket.emit('export-pdf', { html: htmlContent }, (response) => {
             if (response && response.success) {
-                // Reconstruir el PDF desde base64 (evita corrupciión de Buffer en Socket.IO)
+                // Reconstruir el PDF desde base64 (evita corrupción de Buffer en Socket.IO)
                 const binaryStr = atob(response.pdf);
                 const bytes = new Uint8Array(binaryStr.length);
                 for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
@@ -2176,15 +2090,16 @@ function exportTournamentCSV() {
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-                showToast('📄 Reporte PDF exportado exitosamente.');
+                showToast('Reporte PDF exportado exitosamente.');
             } else {
                 showToast(response?.message || 'Error al generar el PDF', true);
             }
         });
     } else {
-        showToast('No hay conexiión con el servidor para generar el PDF', true);
+        showToast('No hay conexión con el servidor para generar el PDF', true);
     }
 }
+
 
 // Toast
 function showToast(msg, isError = false) {
