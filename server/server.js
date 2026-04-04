@@ -144,14 +144,29 @@ io.on('connection', async (socket) => {
     }
 
     // --- Skaters ---
-    socket.on('add-skater', async (skaterData) => {
-        if (!requireAuth('Juez 1', 'agregar patinador')) return;
-        if (!skaterData || typeof skaterData.firstName !== 'string') {
-            console.warn('[AUDIT] Datos invalidos en add-skater');
+    socket.on('add-skater', async (skaterData, callback) => {
+        console.log('[AUDIT] Intento de add-skater - Auth:', authenticated, '- Role:', currentRole);
+
+        if (!requireAuth('Juez 1', 'agregar patinador')) {
+            console.warn('[AUDIT] add-skater rechazado - no autenticado o rol incorrecto');
+            if (callback) callback({ success: false, message: 'No autorizado. Debes iniciar sesión como Juez 1.' });
             return;
         }
-        await db.addSkater(skaterData);
-        await broadcastUpdate();
+        if (!skaterData || typeof skaterData.firstName !== 'string') {
+            console.warn('[AUDIT] Datos invalidos en add-skater:', JSON.stringify(skaterData));
+            if (callback) callback({ success: false, message: 'Datos invalidos' });
+            return;
+        }
+        try {
+            console.log('[AUDIT] Agregando patinador:', skaterData.firstName, skaterData.lastName);
+            await db.addSkater(skaterData);
+            console.log('[AUDIT] Patinador agregado exitosamente');
+            await broadcastUpdate();
+            if (callback) callback({ success: true });
+        } catch (err) {
+            console.error('[AUDIT] Error al agregar patinador:', err.message);
+            if (callback) callback({ success: false, message: err.message });
+        }
     });
 
     socket.on('delete-skater', async (id) => {
@@ -279,21 +294,56 @@ const PORT = process.env.PORT || 3005;
 
 // Validate DATABASE_URL before starting
 if (!process.env.DATABASE_URL) {
-    console.error('ERROR: DATABASE_URL is not set. The server requires a PostgreSQL connection string.');
-    console.error('Get it from Supabase > Project Settings > Database > Connection string');
-    console.error('Format: postgresql://postgres:password@db.xxx.supabase.co:5432/postgres');
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('ERROR: DATABASE_URL environment variable is not set.');
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('');
+    console.error('The server requires a PostgreSQL connection string to run.');
+    console.error('');
+    console.error('How to get DATABASE_URL from Supabase:');
+    console.error('  1. Go to https://supabase.com/dashboard');
+    console.error('  2. Select your project (slide-battle)');
+    console.error('  3. Go to Project Settings > Database');
+    console.error('  4. Find "Connection string" and copy the URI');
+    console.error('  5. Format should be:');
+    console.error('     postgresql://postgres:your_password@db.xxx.supabase.co:5432/postgres');
+    console.error('');
+    console.error('How to configure in Render:');
+    console.error('  1. Go to https://dashboard.render.com');
+    console.error('  2. Select your "slide" web service');
+    console.error('  3. Click on "Environment" in the sidebar');
+    console.error('  4. Click "Add Environment Variable"');
+    console.error('  5. Add DATABASE_URL with your Supabase connection string');
+    console.error('  6. Click "Save Changes" - the service will redeploy automatically');
+    console.error('');
+    console.error('═══════════════════════════════════════════════════════');
     process.exit(1);
 }
 
 (async () => {
     try {
+        console.log('[STARTUP] Iniciando servidor...');
+        console.log('[STARTUP] NODE_ENV:', process.env.NODE_ENV || 'undefined');
+        console.log('[STARTUP] PORT:', process.env.PORT || '3005 (default)');
+        console.log('[STARTUP] DATABASE_URL:', process.env.DATABASE_URL ? 'Configurado ✓' : 'NO CONFIGURADO ✗');
+
         await db.ready();
+        console.log('[STARTUP] Base de datos lista ✓');
+
         server.listen(PORT, '0.0.0.0', () => {
+            console.log(`═══════════════════════════════════════════════════════`);
             console.log(`Servidor de Slide Battle corriendo en http://localhost:${PORT}`);
             console.log(`Para las otras computadoras, usa la IP de esta maquina: http://<tu-ip-local>:${PORT}`);
+            console.log(`═══════════════════════════════════════════════════════`);
         });
     } catch (err) {
-        console.error('Error fatal al iniciar el servidor:', err.message);
+        console.error('═══════════════════════════════════════════════════════');
+        console.error('ERROR FATAL al iniciar el servidor:');
+        console.error(err.message);
+        console.error('');
+        console.error('Detalles completos del error:');
+        console.error(err.stack);
+        console.error('═══════════════════════════════════════════════════════');
         process.exit(1);
     }
 })();

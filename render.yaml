@@ -6,6 +6,7 @@ services:
     plan: free
     buildCommand: "cd server && npm install"
     startCommand: "cd server && node server.js"
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
@@ -27,3 +28,7 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+        # ⚠️ OBLIGATORIO: Configura esta variable en el dashboard de Render
+        # Ve a: https://dashboard.render.com > tu servicio > Environment > Add Environment Variable
+        # Obten la URL desde Supabase: Project Settings > Database > Connection string
+        # Formato: postgresql://postgres:tu_password@db.xxx.supabase.co:5432/postgres

@@ -103,7 +103,7 @@ function setupAuth() {
             // Determinar rol basado en el nombre de usuario
             let targetRole = null;
             const userLower = u.toLowerCase();
-            
+
             if (userLower === 'slide' || userLower === 'admin' || userLower === 'juez1') {
                 targetRole = 'Juez 1';
             } else if (userLower === 'juez2') {
@@ -231,43 +231,43 @@ window.navigateTo = function (viewName) {
     if (viewName === 'brackets') renderBrackets();
 };
 
-    // Mobile Menu Toggle
-    const btnMenuToggle = document.getElementById('btn-menu-toggle');
-    const sidebar = document.getElementById('app-sidebar');
+// Mobile Menu Toggle
+const btnMenuToggle = document.getElementById('btn-menu-toggle');
+const sidebar = document.getElementById('app-sidebar');
 
-    if (btnMenuToggle && sidebar) {
-        btnMenuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('show');
-        });
-    }
+if (btnMenuToggle && sidebar) {
+    btnMenuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('show');
+    });
+}
 
-    // Navigation Logic
-    function setupNavigation() {
-        // Sidebar items
-        ui.navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.navigateTo(item.dataset.view);
-                // Cerrar sidebar en móviles tras navegar
-                if (window.innerWidth <= 768 && sidebar) {
-                    sidebar.classList.remove('show');
-                }
-            });
-        });
-
-        // Dashboard shortcuts (and any other element with data-navigate) using Event Delegation
-        document.body.addEventListener('click', (e) => {
-            const target = e.target.closest('[data-navigate]');
-            if (target) {
-                e.preventDefault();
-                window.navigateTo(target.dataset.navigate);
-                // Cerrar sidebar en móviles tras navegar
-                if (window.innerWidth <= 768 && sidebar) {
-                    sidebar.classList.remove('show');
-                }
+// Navigation Logic
+function setupNavigation() {
+    // Sidebar items
+    ui.navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.navigateTo(item.dataset.view);
+            // Cerrar sidebar en móviles tras navegar
+            if (window.innerWidth <= 768 && sidebar) {
+                sidebar.classList.remove('show');
             }
         });
-    }
+    });
+
+    // Dashboard shortcuts (and any other element with data-navigate) using Event Delegation
+    document.body.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-navigate]');
+        if (target) {
+            e.preventDefault();
+            window.navigateTo(target.dataset.navigate);
+            // Cerrar sidebar en móviles tras navegar
+            if (window.innerWidth <= 768 && sidebar) {
+                sidebar.classList.remove('show');
+            }
+        }
+    });
+}
 
 
 
@@ -285,18 +285,41 @@ function setupEventListeners() {
     // Form Submit
     ui.formSkater.onsubmit = (e) => {
         e.preventDefault();
-        const fName = document.getElementById('skater-firstname').value;
-        const lName = document.getElementById('skater-lastname').value;
+        const fName = document.getElementById('skater-firstname').value.trim();
+        const lName = document.getElementById('skater-lastname').value.trim();
         const catId = ui.categorySelect.value;
         const seed = document.getElementById('skater-seed').value;
-        const idCode = document.getElementById('skater-id-code').value;
+        const idCode = document.getElementById('skater-id-code').value.trim();
         const nat = document.getElementById('skater-nationality') ? document.getElementById('skater-nationality').value : '';
 
-        window.db.addSkater(fName, lName, catId, seed, idCode, nat);
-        ui.modalSkater.classList.add('hidden');
-        renderSkaters();
-        renderDashboard();
-        showToast('Patinador inscrito con éxito.');
+        // Validaciones
+        if (!fName) {
+            showToast('El nombre es obligatorio', true);
+            return;
+        }
+        if (!lName) {
+            showToast('El apellido es obligatorio', true);
+            return;
+        }
+        if (!catId) {
+            showToast('Debes seleccionar una categoría', true);
+            return;
+        }
+
+        // Mostrar loading
+        showToast('Inscribiendo patinador...');
+
+        window.db.addSkater(fName, lName, catId, seed, idCode, nat, (response) => {
+            if (response && response.success) {
+                ui.modalSkater.classList.add('hidden');
+                ui.formSkater.reset();
+                renderSkaters();
+                renderDashboard();
+                showToast('✓ Patinador inscrito con éxito');
+            } else {
+                showToast('Error: ' + (response?.message || 'No se pudo inscribir el patinador'), true);
+            }
+        });
     };
 
     // Battles Logic
@@ -503,7 +526,7 @@ function setupEventListeners() {
 
         lines.forEach(line => {
             if (!line.trim()) return;
-            
+
             // Soporta Tab, Coma o Punto y coma como separadores
             const cols = line.split(/\t|;|,(?![^"]*")/).map(c => c.trim().replace(/^"|"$/g, ''));
             if (cols.length < 2) return;
@@ -523,7 +546,7 @@ function setupEventListeners() {
                 const nameParts = fullName.trim().split(' ');
                 const firstName = nameParts[0];
                 const lastName = nameParts.slice(1).join(' ') || ' ';
-                
+
                 // Si el rank no es válido, intentar usar el índice o 0
                 if (isNaN(rank)) rank = count + 1;
 
@@ -1208,7 +1231,7 @@ function renderActiveBattle() {
         const maxSlots = battle.phase === 'Final' ? 5 : 4;
         const myRole = window.db.currentRole;
         const judging = bs.judging || { 'Juez 1': [], 'Juez 2': [], 'Juez 3': [] };
-        
+
         // Verificar si el juez actual ya completó sus slots
         const mySlotsCount = (judging[myRole] || []).filter(s => s !== null && s !== undefined).length;
         const isDoneByMe = mySlotsCount >= maxSlots;
@@ -1309,7 +1332,7 @@ function renderActiveBattle() {
         rolesToShow.forEach(role => {
             if (!role) return;
             const roleSlots = judging[role] || [];
-            
+
             // Si hay datos para este juez, mostrar sección
             if (roleSlots.some(s => s !== null && s !== undefined) || rolesToShow.length === 1) {
                 // Título de la sección de este juez
@@ -1487,7 +1510,7 @@ function renderBrackets() {
                 const positionBadge = battle.status === 'completed'
                     ? (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx === 3 ? '4º' : '')
                     : '';
-                
+
                 const finalMark = battle.phase === 'Final' && battle.status === 'completed'
                     ? `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">Posición: ${idx + 1}º</span>`
                     : mark;
@@ -1602,19 +1625,19 @@ function exportTournamentCSV() {
                     const maxToCount = lastBattle.phase === 'Final' ? 4 : 3;
                     const topScores = scores.slice(0, maxToCount);
                     const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
-                    
+
                     // Variety Multiplier (Sync with db.js)
                     const families = new Set(validTricks.map(t => {
-                         if (!t.family) return '';
-                         const m = t.family.match(/^(F\d+)/);
-                         return m ? m[1] : '';
+                        if (!t.family) return '';
+                        const m = t.family.match(/^(F\d+)/);
+                        return m ? m[1] : '';
                     }));
                     const numFamilies = families.size;
                     let m_var = 1.0;
                     if (numFamilies === 3) m_var = 1.05;
                     else if (numFamilies >= 4) m_var = 1.10;
                     // Note: Penalty of 0.70 was removed as per scoring fix
-                    
+
                     return Math.round(baseTotal * m_var * 100) / 100;
                 };
                 j1Score = getSumExport('Juez 1');
@@ -2034,7 +2057,7 @@ function exportTournamentCSV() {
         // Usar los datos ya calculados
         let maxPhase = sk.finalPhase === 'Final' ? '🏆 Final' :
             (sk.finalPhase === 'Semifinal' || sk.finalPhase === 'Semi-Final' || sk.finalPhase === 'Semifinales') ? 'Semifinal' :
-            (sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' || sk.finalPhase === 'Cuartos de Final') ? 'Cuartos' : 'Preliminar';
+                (sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' || sk.finalPhase === 'Cuartos de Final') ? 'Cuartos' : 'Preliminar';
 
         let j1Score = sk.j1Score > 0 ? sk.j1Score : '-';
         let j2Score = sk.j2Score > 0 ? sk.j2Score : '-';

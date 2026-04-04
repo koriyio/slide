@@ -104,7 +104,7 @@ class SlideStorage {
     // --- SKATERS ---
     getSkaters() { return this.localData.skaters || []; }
 
-    addSkater(firstName, lastName, categoryId, seedNumber, externalId = '', nationality = '') {
+    addSkater(firstName, lastName, categoryId, seedNumber, externalId = '', nationality = '', callback) {
         const newSkater = {
             id: Date.now() + Math.floor(Math.random() * 10000000),
             firstName,
@@ -114,11 +114,38 @@ class SlideStorage {
             externalId: externalId,
             nationality: nationality
         };
-        this.socket.emit('add-skater', newSkater);
+
+        // Actualizar localmente PRIMERO para que la UI se actualice inmediatamente
+        if (!this.localData.skaters) this.localData.skaters = [];
+        this.localData.skaters.push(newSkater);
+
+        // Emitir al servidor con callback
+        this.socket.emit('add-skater', newSkater, (response) => {
+            if (callback) callback(response);
+            if (!response || !response.success) {
+                // Si falló, revertir el cambio local
+                this.localData.skaters = this.localData.skaters.filter(s => s.id !== newSkater.id);
+                if (window.renderSkaters) renderSkaters();
+                if (window.showToast) showToast(response?.message || 'Error al agregar patinador', true);
+            }
+        });
         return newSkater;
     }
 
     deleteSkater(id) {
+        // Actualizar localmente PRIMERO
+        if (this.localData.skaters) {
+            this.localData.skaters = this.localData.skaters.filter(s => s.id !== id);
+        }
+        // Eliminar también de las batallas locales
+        if (this.localData.battles) {
+            this.localData.battles.forEach(battle => {
+                if (battle.skaters) {
+                    battle.skaters = battle.skaters.filter(s => s.skaterId !== id);
+                }
+            });
+        }
+
         this.socket.emit('delete-skater', id);
         return true;
     }
@@ -400,7 +427,7 @@ class SlideStorage {
 
             const stopBonuses = { 0: 0, 1: 2.0, 2: 4.0, 3: 6.0 };
             const stopBonus = stopBonuses[stopLevelInt] || 0;
-            
+
             // Cálculo local debe coincidir con el servidor (db.js)
             const finalScore = isFail ? 0 : Math.max(0, trickBase.baseScore + adjValue + distanceBonus + stopBonus);
             performedTrick = {

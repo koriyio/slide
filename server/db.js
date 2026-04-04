@@ -47,22 +47,47 @@ class SlideDB {
         try {
             const connectionString = process.env.DATABASE_URL;
             if (!connectionString) {
-                throw new Error('DATABASE_URL no está definida.');
+                throw new Error('DATABASE_URL no está definida en las variables de entorno.');
             }
+
+            console.log('[DB] Conectando a Supabase...');
 
             // Usar connectionString directamente para soportar el Pooler de Supabase
             this.pool = new Pool({
                 connectionString: connectionString,
-                ssl: process.env.NODE_ENV === 'production' ? { 
+                ssl: process.env.NODE_ENV === 'production' ? {
                     rejectUnauthorized: false
                 } : false
             });
+
+            // Test connection
+            console.log('[DB] Probando conexión a la base de datos...');
+            const client = await this.pool.connect();
+            await client.query('SELECT NOW()');
+            client.release();
+            console.log('[DB] Conexión a Supabase exitosa ✓');
 
             await this.pool.query(SCHEMA_SQL);
             console.log('[DB] Esquema de PostgreSQL inicializado correctamente.');
             await this.seedCategories();
         } catch (err) {
-            console.error('[DB] Error inicializando base de datos:', err.message);
+            console.error('[DB] ═══════════════════════════════════════════════════════');
+            console.error('[DB] ERROR al conectar con la base de datos:');
+            console.error('[DB] ' + err.message);
+            console.error('[DB] ═══════════════════════════════════════════════════════');
+
+            // Provide helpful context for common errors
+            if (err.message.includes('password authentication failed')) {
+                console.error('[DB] Verifica que la contraseña en DATABASE_URL sea correcta.');
+                console.error('[DB] Ve a Supabase > Project Settings > Database para obtener la URL correcta.');
+            } else if (err.message.includes('connect ECONNREFUSED')) {
+                console.error('[DB] No se pudo conectar al servidor de Supabase.');
+                console.error('[DB] Verifica que el proyecto esté activo en supabase.com/dashboard');
+            } else if (err.message.includes('SSL')) {
+                console.error('[DB] Error de SSL. Supabase requiere conexión SSL.');
+                console.error('[DB] La configuración SSL ya está habilitada para producción.');
+            }
+
             throw err;
         }
     }
@@ -80,12 +105,14 @@ class SlideDB {
             { id: 'mini', name: 'Mini' }
         ];
 
+        console.log('[DB] Inicializando categorías...');
         for (const cat of categories) {
             await this.pool.query(
                 'INSERT INTO categories (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING',
                 [cat.id, cat.name]
             );
         }
+        console.log('[DB] Categorías inicializadas correctamente ✓');
     }
 
     // --- Get full DB (format used by frontend) ---
@@ -139,63 +166,95 @@ class SlideDB {
 
     // --- Skaters ---
     async addSkater(skaterData) {
-        await this.pool.query(
-            `INSERT INTO skaters (id, first_name, last_name, category_id, seed_number, external_id, nationality)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [
-                skaterData.id,
-                skaterData.firstName,
-                skaterData.lastName,
-                skaterData.categoryId,
-                skaterData.seedNumber || 0,
-                skaterData.externalId || null,
-                skaterData.nationality || 'CL'
-            ]
-        );
+        console.log('[DB] Insertando patinador:', skaterData.firstName, skaterData.lastName);
+
+        const fields = ['first_name', 'last_name', 'category_id', 'seed_number', 'external_id', 'nationality'];
+        const values = [
+            skaterData.firstName,
+            skaterData.lastName,
+            skaterData.categoryId,
+            skaterData.seedNumber || 0,
+            skaterData.externalId || null,
+            skaterData.nationality || 'CL'
+        ];
+
+        let query;
+        let params;
+
+        if (skaterData.id) {
+            query = `INSERT INTO skaters (id, ${fields.join(', ')}) VALUES ($1, $2, $3, $4, $5, $6, $7)`;
+            params = [skaterData.id, ...values];
+        } else {
+            query = `INSERT INTO skaters (${fields.join(', ')}) VALUES ($1, $2, $3, $4, $5, $6)`;
+            params = values;
+        }
+
+        const result = await this.pool.query(query, params);
+        console.log('[DB] Patinador insertado correctamente.');
     }
 
     async deleteSkater(id) {
-        // Primero eliminar de battle_skaters para evitar errores de integridad
         await this.pool.query('DELETE FROM battle_skaters WHERE skater_id = $1', [id]);
         await this.pool.query('DELETE FROM skaters WHERE id = $1', [id]);
     }
 
     async importSkaters(skaters) {
+        console.log(`[DB] Importando ${skaters.length} patinadores...`);
         for (const s of skaters) {
-            await this.pool.query(
-                `INSERT INTO skaters (id, first_name, last_name, category_id, seed_number, external_id, nationality)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO UPDATE 
-                 SET first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name`,
-                [
-                    s.id, s.firstName, s.lastName, s.categoryId,
-                    s.seedNumber || 0, s.externalId || null, s.nationality || 'CL'
-                ]
-            );
+            const fields = ['first_name', 'last_name', 'category_id', 'seed_number', 'external_id', 'nationality'];
+            const values = [
+                s.firstName, s.lastName, s.categoryId,
+                s.seedNumber || 0, s.externalId || null, s.nationality || 'CL'
+            ];
+
+            if (s.id) {
+                await this.pool.query(
+                    `INSERT INTO skaters (id, ${fields.join(', ')}) 
+                     VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                     ON CONFLICT (id) DO UPDATE SET 
+                     first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, 
+                     category_id = EXCLUDED.category_id`,
+                    [s.id, ...values]
+                );
+            } else {
+                await this.pool.query(
+                    `INSERT INTO skaters (${fields.join(', ')}) VALUES ($1, $2, $3, $4, $5, $6)`,
+                    values
+                );
+            }
         }
     }
 
     // --- Battles ---
     async addBattles(battles) {
         for (const battle of battles) {
-            await this.pool.query(
-                `INSERT INTO battles (id, category_id, phase, heat_number, status)
-                 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE
-                 SET status = EXCLUDED.status`,
-                [
-                    battle.id,
-                    battle.categoryId,
-                    battle.phase,
-                    battle.heatNumber,
-                    battle.status || 'pending'
-                ]
-            );
+            const bFields = ['category_id', 'phase', 'heat_number', 'status'];
+            const bValues = [battle.categoryId, battle.phase, battle.heatNumber, battle.status || 'pending'];
+            
+            let battleId;
+            if (battle.id) {
+                await this.pool.query(
+                    `INSERT INTO battles (id, ${bFields.join(', ')})
+                     VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE
+                     SET status = EXCLUDED.status`,
+                    [battle.id, ...bValues]
+                );
+                battleId = battle.id;
+            } else {
+                const res = await this.pool.query(
+                    `INSERT INTO battles (${bFields.join(', ')}) VALUES ($1, $2, $3, $4) RETURNING id`,
+                    bValues
+                );
+                battleId = res.rows[0].id;
+            }
+
             for (const s of battle.skaters) {
                 await this.pool.query(
                     `INSERT INTO battle_skaters (battle_id, skater_id, judging, total_score, qualified)
                      VALUES ($1, $2, $3, $4, $5) ON CONFLICT (battle_id, skater_id) DO UPDATE
                      SET total_score = EXCLUDED.total_score, qualified = EXCLUDED.qualified`,
                     [
-                        battle.id,
+                        battleId,
                         s.skaterId,
                         s.judging || {},
                         s.totalScore || 0,
