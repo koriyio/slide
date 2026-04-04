@@ -277,7 +277,7 @@ io.on('connection', async (socket) => {
 
             console.log(`[AUDIT] Generando PDF solicitado por ${currentRole}...`);
 
-            HTML_PDF.generatePdf(file, options)
+            pdf.generatePdf(file, options)
                 .then(pdfBuffer => {
                     callback({ success: true, pdf: pdfBuffer.toString('base64') });
                     console.log(`[AUDIT] PDF generado exitosamente.`);
