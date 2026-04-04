@@ -763,34 +763,14 @@ function setupTrickSearch() {
 // Actions
 function deleteSkater(id) {
     if (!confirm('¿Seguro que deseas eliminar a este patinador?')) return;
-
-    // Verificar que la sesión está activa
-    if (!window.db || !window.db.socket || !window.db.socket.connected) {
-        showToast('⚠️ Sin conexión al servidor. Recarga la página e inténtalo de nuevo.', true);
-        return;
-    }
-
-    // Verificar que el usuario es Juez 1
-    if (window.db.currentRole !== 'Juez 1') {
-        showToast('⚠️ Solo el Juez 1 puede eliminar deportistas.', true);
-        return;
-    }
-
-    console.log('[DELETE] Enviando solicitud de borrado para ID:', id, '| Tipo:', typeof id);
-
-    // Emitir directamente con callback para saber si tuvo éxito
-    window.db.socket.emit('delete-skater', String(id), (response) => {
-        console.log('[DELETE] Respuesta del servidor:', response);
-    });
-
-    // Actualizar UI localmente
+    console.log('[DELETE] Eliminando ID:', id);
+    window.db.socket.emit('delete-skater', String(id));
     if (window.db.localData && window.db.localData.skaters) {
         window.db.localData.skaters = window.db.localData.skaters.filter(s => String(s.id) !== String(id));
     }
-
     renderSkaters();
     renderDashboard();
-    showToast('Patinador eliminado correctamente.', false);
+    showToast('Patinador eliminado.', false);
 }
 
 // Rendering
