@@ -1,10 +1,5 @@
 const { Pool } = require('pg');
-const dns = require('dns');
-
-// Force IPv4 DNS resolution (Render free tier doesn't support IPv6)
-const dnsLookup = (hostname, options, callback) => {
-    dns.lookup(hostname, { family: 4 }, callback);
-};
+const dns = require('dns').promises;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -45,35 +40,41 @@ CREATE TABLE IF NOT EXISTS battle_skaters (
 
 class SlideDB {
     constructor() {
-        const connectionString = process.env.DATABASE_URL;
-        if (!connectionString) {
-            console.error('[DB] DATABASE_URL no está definida en las variables de entorno.');
-        }
-
-        // Parse connection string to force IPv4 (Render free tier doesn't support IPv6)
-        const parsed = new URL(connectionString);
-        const host = parsed.hostname;
-        const port = parsed.port || 5432;
-        const user = parsed.username || 'postgres';
-        const password = parsed.password || '';
-        const database = (parsed.pathname || '').replace(/^\//, '') || 'postgres';
-
-        this.pool = new Pool({
-            host: host,
-            port: parseInt(port),
-            user: user,
-            password: password,
-            database: database,
-            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-            // Force IPv4 DNS resolution
-            lookup: dnsLookup
-        });
-
+        this.pool = null;
         this._ready = this.init();
     }
 
     async init() {
         try {
+            const connectionString = process.env.DATABASE_URL;
+            if (!connectionString) {
+                throw new Error('DATABASE_URL no está definida.');
+            }
+
+            const parsed = new URL(connectionString);
+            const host = parsed.hostname;
+            const port = parsed.port || 5432;
+            const user = parsed.username || 'postgres';
+            const password = parsed.password || '';
+            const database = (parsed.pathname || '').replace(/^\//, '') || 'postgres';
+
+            // Resolvención manual a IPv4 (Render capa gratuita falla con IPv6)
+            console.log(`[DB] Resolviendo host para forzar IPv4: ${host}...`);
+            const { address } = await dns.lookup(host, { family: 4 });
+            console.log(`[DB] IP resuelta: ${address}`);
+
+            this.pool = new Pool({
+                host: address,
+                port: parseInt(port),
+                user: user,
+                password: password,
+                database: database,
+                ssl: process.env.NODE_ENV === 'production' ? { 
+                    rejectUnauthorized: false,
+                    servername: host // Importante para SSL con IP
+                } : false
+            });
+
             await this.pool.query(SCHEMA_SQL);
             console.log('[DB] Esquema de PostgreSQL inicializado correctamente.');
             await this.seedCategories();
