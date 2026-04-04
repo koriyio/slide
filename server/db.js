@@ -1,5 +1,4 @@
 const { Pool } = require('pg');
-const dns = require('dns').promises;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -51,27 +50,11 @@ class SlideDB {
                 throw new Error('DATABASE_URL no está definida.');
             }
 
-            const parsed = new URL(connectionString);
-            const host = parsed.hostname;
-            const port = parsed.port || 5432;
-            const user = parsed.username || 'postgres';
-            const password = parsed.password || '';
-            const database = (parsed.pathname || '').replace(/^\//, '') || 'postgres';
-
-            // Resolvención manual a IPv4 (Render capa gratuita falla con IPv6)
-            console.log(`[DB] Resolviendo host para forzar IPv4: ${host}...`);
-            const { address } = await dns.lookup(host, { family: 4 });
-            console.log(`[DB] IP resuelta: ${address}`);
-
+            // Usar connectionString directamente para soportar el Pooler de Supabase
             this.pool = new Pool({
-                host: address,
-                port: parseInt(port),
-                user: user,
-                password: password,
-                database: database,
+                connectionString: connectionString,
                 ssl: process.env.NODE_ENV === 'production' ? { 
-                    rejectUnauthorized: false,
-                    servername: host // Importante para SSL con IP
+                    rejectUnauthorized: false
                 } : false
             });
 
