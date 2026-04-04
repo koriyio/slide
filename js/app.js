@@ -1353,16 +1353,19 @@ function renderActiveBattle() {
                 
                 roleSlots.forEach(s => {
                     if (s && !s.isFail) {
-                        const trk = allTricks.find(t => t.name === s.name);
+                        const sName = s.name.trim().toLowerCase();
+                        const trk = allTricks.find(t => t.name.trim().toLowerCase() === sName);
                         if (trk) {
-                            if (trk.family.includes('F1')) familyCounts['INT']++;
-                            else if (trk.family.includes('F2')) familyCounts['EXT']++;
-                            else if (trk.family.includes('F3')) familyCounts['FR']++;
-                            else if (trk.family.includes('F4')) familyCounts['ESP']++;
-                            else if (trk.family.includes('F5')) familyCounts['LAT']++;
+                            const fam = trk.family || "";
+                            if (fam.includes('F1')) familyCounts['INT']++;
+                            else if (fam.includes('F2')) familyCounts['EXT']++;
+                            else if (fam.includes('F3')) familyCounts['FR']++;
+                            else if (fam.includes('F4')) familyCounts['ESP']++;
+                            else if (fam.includes('F5')) familyCounts['LAT']++;
                         }
                     }
                 });
+                console.log(`[DEBUG] Familias para ${role}:`, familyCounts);
 
                 slotsHtml += '<div class="family-counters">';
                 for (const [key, count] of Object.entries(familyCounts)) {
