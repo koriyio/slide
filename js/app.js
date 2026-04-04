@@ -491,7 +491,7 @@ function setupEventListeners() {
     };
 
     ui.btnRestartServer.onclick = () => {
-        if (confirm('¿Reiniciar el servidor? La conexiión se perder├í por unos segundos.')) {
+        if (confirm('¿Reiniciar el servidor? La conexión se perder├í por unos segundos.')) {
             window.db.socket.emit('restart-server');
             showToast('Enviando señal de reinicio...', true);
         }
@@ -569,7 +569,7 @@ function setupEventListeners() {
 function populateCategories() {
     const cats = window.db.getCategories();
 
-    // Guardar selecciión actual para no perderla al actualizar
+    // Guardar selección actual para no perderla al actualizar
     const currentBattlesCat = ui.battlesCategorySelect.value;
     const currentBracketsCat = ui.bracketsCategorySelect.value;
 
@@ -1016,7 +1016,7 @@ function renderBattlesByCategory(battles, allSkaters) {
 
 // Check if we can generate next phase directly from Battles view
 function checkAndShowNextPhaseButton(catId) {
-    if (!catId) return; // No mostrar botión cuando se ven todas las categorías
+    if (!catId) return; // No mostrar botón cuando se ven todas las categorías
 
     const battles = window.db.getBattlesByCategory(catId);
     const currentBattles = battles.filter(b => b.phase === battles[battles.length - 1].phase);
@@ -1298,7 +1298,7 @@ function renderActiveBattle() {
                 </div>
 
                 ${battle.status === 'completed' ? (() => {
-                // Ordenar skaters por puntaje para determinar la posiciión
+                // Ordenar skaters por puntaje para determinar la posición
                 const sortedSkaters = [...battle.skaters].sort((a, b) => b.totalScore - a.totalScore);
                 const position = sortedSkaters.findIndex(s => s.skaterId == bs.skaterId) + 1;
 
@@ -1613,13 +1613,11 @@ function exportTournamentCSV() {
 
     if (skaters.length === 0) return showToast('No hay datos para exportar', true);
 
-    // Calcular posición final de cada skater en el campeonato
     const skaterResults = skaters.map(sk => {
         const refCatId = sk.categoryId || sk.category || 'unknown';
         const cat = categories.find(c => c.id == refCatId);
         const categoryName = cat ? cat.name : refCatId;
 
-        // Buscar todas las batallas de este patinador
         const skaterBattles = battles.filter(b => b.skaters.some(s => s.skaterId == sk.id));
 
         let finalPhase = 'Preliminar';
@@ -1639,7 +1637,6 @@ function exportTournamentCSV() {
         };
 
         if (skaterBattles.length > 0) {
-            // Obtener la fase más avanzada
             const lastBattle = skaterBattles.reduce((last, b) =>
                 (phaseMap[b.phase] || 0) > (phaseMap[last.phase] || 0) ? b : last, skaterBattles[0]);
             const result = lastBattle.skaters.find(s => s.skaterId === sk.id);
@@ -1663,7 +1660,6 @@ function exportTournamentCSV() {
                     const topScores = scores.slice(0, maxToCount);
                     const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
 
-                    // Variety Multiplier (Sync with db.js)
                     const families = new Set(validTricks.map(t => {
                         if (!t.family) return '';
                         const m = t.family.match(/^(F\d+)/);
@@ -1697,8 +1693,6 @@ function exportTournamentCSV() {
         };
     });
 
-    // Calcular posiciones globales por categoría
-    // Primero agrupar por categoría
     const byCategory = {};
     skaterResults.forEach(sk => {
         const refCatId = sk.categoryId || sk.category || 'unknown';
@@ -1708,7 +1702,6 @@ function exportTournamentCSV() {
         byCategory[refCatId].push(sk);
     });
 
-    // Para cada categoría, calcular posiciones
     Object.values(byCategory).forEach(catSkaters => {
         catSkaters.sort((a, b) => {
             if (b.finalPhaseNum !== a.finalPhaseNum) return b.finalPhaseNum - a.finalPhaseNum;
@@ -1720,27 +1713,16 @@ function exportTournamentCSV() {
         });
     });
 
-    // Ordenar resultados: 1) Categoría, 2) Fase, 3) Puntaje, 4) Posición
     const sortedSkaters = [...skaterResults].sort((a, b) => {
-        // Primero por categoría
         if (a.categoryName !== b.categoryName) return a.categoryName.localeCompare(b.categoryName);
-        
-        // Luego por fase alcanzada (Final primero)
         if (b.finalPhaseNum !== a.finalPhaseNum) return b.finalPhaseNum - a.finalPhaseNum;
-
-        // Luego por puntaje total (más alto primero)
         if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-
-        // Luego por posición final del grupo (si existe)
         if (a.finalPosition && b.finalPosition) return a.finalPosition - b.finalPosition;
         if (a.finalPosition && !b.finalPosition) return -1;
         if (!a.finalPosition && b.finalPosition) return 1;
-
-        // Finalmente por seed (más bajo primero)
         return (a.seedNumber || 999) - (b.seedNumber || 999);
     });
 
-    // Crear tabla HTML con formato profesional
     const currentDate = new Date().toLocaleDateString('es-CL', {
         year: 'numeric',
         month: 'long',
@@ -1750,240 +1732,77 @@ function exportTournamentCSV() {
     const baseUrl = window.location.href.split('index.html')[0].replace(/\/$/, '');
     const logoUrl = `${baseUrl}/img/logo.png`;
 
-    let htmlContent = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados - Liga Chilena de Inline Freestyle 2026</title>
-    <style>
-        @page { size: A4 landscape; margin: 15mm; }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #fff;
-            color: #222;
-            font-size: 11px;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        .header {
-            text-align: center;
-            background: linear-gradient(135deg, #0039A6 0%, #FFFFFF 50%, #D52B1E 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, rgba(0,57,166,0.8) 0%, rgba(255,255,255,0.6) 50%, rgba(213,43,30,0.8) 100%);
-            z-index: 1;
-        }
-        .header-content {
-            position: relative;
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100px;
-        }
-        .header-text {
-            text-align: center;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 26px;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: #000;
-        }
-        .header p {
-            margin: 8px 0 0 0;
-            font-size: 13px;
-            font-weight: 600;
-            color: #111;
-        }
-        .league-badge {
-            display: inline-block;
-            background: #0039A6;
-            color: #fff;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 10px;
-        }
-        .league-logo {
-            height: 90px;
-            object-fit: contain;
-            position: absolute;
-            left: -15px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        .date {
-            text-align: right;
-            font-size: 10px;
-            color: #666;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        th {
-            background: linear-gradient(135deg, #0039A6 0%, #1e40af 100%);
-            color: white;
-            padding: 10px 8px;
-            text-align: center;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 10px;
-            letter-spacing: 0.5px;
-            border: 1px solid #1e3a8a;
-        }
-        td {
-            padding: 8px;
-            border: 1px solid #e2e8f0;
-            text-align: center;
-        }
-        tr:nth-child(even) {
-            background: linear-gradient(90deg, rgba(0,57,166,0.03) 0%, rgba(213,43,30,0.03) 100%);
-        }
-        tr:hover {
-            background: linear-gradient(90deg, rgba(0,57,166,0.08) 0%, rgba(213,43,30,0.08) 100%);
-        }
-        .category-header {
-            background: #0039A6 !important;
-            color: white !important;
-            font-weight: 700;
-            text-align: left;
-            padding-left: 15px;
-        }
-        .skater-name {
-            text-align: left;
-            font-weight: 600;
-            padding-left: 15px;
-        }
-        .score {
-            font-weight: 700;
-            color: #D52B1E;
-        }
-        .score-high {
-            color: #0039A6;
-            font-size: 12px;
-        }
-        .score-medium {
-            color: #D52B1E;
-        }
-        .score-low {
-            color: #666;
-        }
-        .position {
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 12px;
-            display: inline-block;
-            min-width: 30px;
-        }
-        .pos-1 {
-            background: #FFD700;
-            color: #000;
-        }
-        .pos-2 {
-            background: #C0C0C0;
-            color: #000;
-        }
-        .pos-3 {
-            background: #CD7F32;
-            color: #fff;
-        }
-        .pos-default {
-            background: #e2e8f0;
-            color: #64748B;
-        }
-        .qualified {
-            background: #0039A6;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 9px;
-            font-weight: 600;
-        }
-        .status-completed {
-            color: #10B981;
-            font-weight: 600;
-            font-size: 9px;
-        }
-        .status-pending {
-            color: #F59E0B;
-            font-weight: 600;
-            font-size: 9px;
-        }
-        .footer {
-            text-align: center;
-            font-size: 9px;
-            color: #666;
-            margin-top: 20px;
-            padding-top: 10px;
-            border-top: 2px solid #0039A6;
-            background: linear-gradient(90deg, rgba(0,57,166,0.05) 0%, rgba(213,43,30,0.05) 100%);
-            padding: 15px;
-            border-radius: 8px;
-        }
-        .footer-strong {
-            font-weight: 700;
-            color: #0039A6;
-        }
-        @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="header-content">
-            <img src="${logoUrl}" class="league-logo" alt="Logo Liga Chilena">
-            <div class="header-text">
-                <h1>LIGA CHILENA DE INLINE FREESTYLE</h1>
-                <p>Campeonato Nacional 2026 - Reporte Oficial de Resultados</p>
-                <div class="league-badge">TEMPORADA 2026</div>
-            </div>
-        </div>
-    </div>
-    <div class="date">Generado: ${currentDate}</div>
-
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 50px;">#</th>
-                <th style="width: 80px;">CATEGORÍA</th>
-                <th style="width: 120px;">ID/WSSA</th>
-                <th style="width: 200px;">PATINADOR</th>
-                <th style="width: 50px;">SEED</th>
-                <th style="width: 80px;">FASE</th>
-                <th style="width: 70px;">JUEZ 1</th>
-                <th style="width: 70px;">JUEZ 2</th>
-                <th style="width: 70px;">JUEZ 3</th>
-                <th style="width: 80px;">TOTAL</th>
-                <th style="width: 80px;">ESTADO</th>
-            </tr>
-        </thead>
-        <tbody>
-`;
+    // Build HTML using HTML entities for special chars to avoid encoding issues
+    let htmlContent = '';
+    
+    htmlContent += '<!DOCTYPE html>\n<html lang="es">\n<head>\n';
+    htmlContent += '    <meta charset="UTF-8">\n';
+    htmlContent += '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n';
+    htmlContent += '    <title>Resultados - Liga Chilena de Inline Freestyle 2026</title>\n';
+    htmlContent += '    <style>\n';
+    htmlContent += '        @page { size: A4 landscape; margin: 15mm; }\n';
+    htmlContent += "        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');\n";
+    htmlContent += '        body { font-family: \'Inter\', sans-serif; background: #fff; color: #222; font-size: 11px; }\n';
+    htmlContent += '        .header { text-align: center; background: linear-gradient(135deg, #0039A6 0%, #FFFFFF 50%, #D52B1E 100%); padding: 25px; border-radius: 8px; margin-bottom: 20px; position: relative; }\n';
+    htmlContent += '        .header::before { content: \'\'; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(0,57,166,0.8) 0%, rgba(255,255,255,0.6) 50%, rgba(213,43,30,0.8) 100%); z-index: 1; }\n';
+    htmlContent += '        .header-content { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; min-height: 100px; }\n';
+    htmlContent += '        .header-text { text-align: center; }\n';
+    htmlContent += '        .header h1 { margin: 0; font-size: 26px; text-transform: uppercase; letter-spacing: 3px; color: #000; }\n';
+    htmlContent += '        .header p { margin: 8px 0 0 0; font-size: 13px; font-weight: 600; color: #111; }\n';
+    htmlContent += '        .league-badge { display: inline-block; background: #0039A6; color: #fff; padding: 8px 20px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; }\n';
+    htmlContent += '        .league-logo { height: 90px; object-fit: contain; position: absolute; left: -15px; top: 50%; transform: translateY(-50%); }\n';
+    htmlContent += '        .date { text-align: right; font-size: 10px; color: #666; margin-bottom: 10px; font-weight: 600; }\n';
+    htmlContent += '        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }\n';
+    htmlContent += '        th { background: linear-gradient(135deg, #0039A6 0%, #1e40af 100%); color: white; padding: 10px 8px; text-align: center; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; border: 1px solid #1e3a8a; }\n';
+    htmlContent += '        td { padding: 8px; border: 1px solid #e2e8f0; text-align: center; }\n';
+    htmlContent += '        tr:nth-child(even) { background: linear-gradient(90deg, rgba(0,57,166,0.03) 0%, rgba(213,43,30,0.03) 100%); }\n';
+    htmlContent += '        .category-header { background: #0039A6 !important; color: white !important; font-weight: 700; text-align: left; padding-left: 15px; }\n';
+    htmlContent += '        .skater-name { text-align: left; font-weight: 600; padding-left: 15px; }\n';
+    htmlContent += '        .score { font-weight: 700; color: #D52B1E; }\n';
+    htmlContent += '        .score-high { color: #0039A6; font-size: 12px; }\n';
+    htmlContent += '        .score-medium { color: #D52B1E; }\n';
+    htmlContent += '        .score-low { color: #666; }\n';
+    htmlContent += '        .position { font-weight: 700; padding: 3px 8px; border-radius: 12px; display: inline-block; min-width: 30px; }\n';
+    htmlContent += '        .pos-1 { background: #FFD700; color: #000; }\n';
+    htmlContent += '        .pos-2 { background: #C0C0C0; color: #000; }\n';
+    htmlContent += '        .pos-3 { background: #CD7F32; color: #fff; }\n';
+    htmlContent += '        .pos-default { background: #e2e8f0; color: #64748B; }\n';
+    htmlContent += '        .footer { text-align: center; font-size: 9px; color: #666; margin-top: 20px; padding-top: 10px; border-top: 2px solid #0039A6; background: linear-gradient(90deg, rgba(0,57,166,0.05) 0%, rgba(213,43,30,0.05) 100%); padding: 15px; border-radius: 8px; }\n';
+    htmlContent += '        .footer-strong { font-weight: 700; color: #0039A6; }\n';
+    htmlContent += '        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }\n';
+    htmlContent += '    </style>\n</head>\n<body>\n';
+    
+    // Header section - using HTML entities for special characters
+    htmlContent += '    <div class="header">\n';
+    htmlContent += '        <div class="header-content">\n';
+    htmlContent += '            <img src="' + logoUrl + '" class="league-logo" alt="Logo Liga Chilena">\n';
+    htmlContent += '            <div class="header-text">\n';
+    htmlContent += '                <h1>LIGA CHILENA DE INLINE FREESTYLE</h1>\n';
+    htmlContent += '                <p>Campeonato Nacional 2026 - Reporte Oficial de Resultados</p>\n';
+    htmlContent += '                <div class="league-badge">TEMPORADA 2026</div>\n';
+    htmlContent += '            </div>\n';
+    htmlContent += '        </div>\n';
+    htmlContent += '    </div>\n';
+    htmlContent += '    <div class="date">Generado: ' + currentDate + '</div>\n\n';
+    
+    // Table header - using &Iacute; for &Iacute; to avoid encoding issues
+    htmlContent += '    <table>\n';
+    htmlContent += '        <thead>\n';
+    htmlContent += '            <tr>\n';
+    htmlContent += '                <th style="width: 50px;">#</th>\n';
+    htmlContent += '                <th style="width: 80px;">CATEGOR&Iacute;A</th>\n';
+    htmlContent += '                <th style="width: 120px;">ID/WSSA</th>\n';
+    htmlContent += '                <th style="width: 200px;">PATINADOR</th>\n';
+    htmlContent += '                <th style="width: 50px;">SEED</th>\n';
+    htmlContent += '                <th style="width: 80px;">FASE</th>\n';
+    htmlContent += '                <th style="width: 70px;">JUEZ 1</th>\n';
+    htmlContent += '                <th style="width: 70px;">JUEZ 2</th>\n';
+    htmlContent += '                <th style="width: 70px;">JUEZ 3</th>\n';
+    htmlContent += '                <th style="width: 80px;">TOTAL</th>\n';
+    htmlContent += '                <th style="width: 80px;">ESTADO</th>\n';
+    htmlContent += '            </tr>\n';
+    htmlContent += '        </thead>\n';
+    htmlContent += '        <tbody>\n';
 
     let currentCategory = '';
     let categoryPosition = 0;
@@ -1991,21 +1810,16 @@ function exportTournamentCSV() {
     sortedSkaters.forEach(sk => {
         const categoryName = sk.categoryName;
 
-        // Si cambia la categoría, agregar separador y resetear posición
         if (categoryName !== currentCategory) {
             currentCategory = categoryName;
             categoryPosition = 1;
-            htmlContent += `
-            <tr>
-                <td colspan="11" class="category-header">
-                    <strong>${categoryName}</strong>
-                </td>
-            </tr>`;
+            htmlContent += '            <tr>\n';
+            htmlContent += '                <td colspan="11" class="category-header"><strong>' + categoryName + '</strong></td>\n';
+            htmlContent += '            </tr>\n';
         } else {
             categoryPosition++;
         }
 
-        // Usar los datos ya calculados
         let maxPhase = sk.finalPhase === 'Final' ? 'Final' :
             (sk.finalPhase === 'Semifinal' || sk.finalPhase === 'Semi-Final' || sk.finalPhase === 'Semifinales') ? 'Semifinal' :
                 (sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' || sk.finalPhase === 'Cuartos de Final') ? 'Cuartos' : 'Preliminar';
@@ -2015,69 +1829,62 @@ function exportTournamentCSV() {
         let j3Score = sk.j3Score > 0 ? sk.j3Score : '-';
         let totalScore = sk.totalScore;
 
-        // Determinar clase de puntaje
         let scoreClass = 'score-medium';
         if (totalScore >= 34) scoreClass = 'score-high';
         else if (totalScore < 17) scoreClass = 'score-low';
 
-        // Formatear nombres en MAYÚSCULAS
-        const fullName = `${sk.firstName} ${sk.lastName}`.toUpperCase();
+        const fullName = (sk.firstName + ' ' + sk.lastName).toUpperCase();
         const wssa = sk.externalId || '-';
-        const seed = sk.seedNumber > 0 ? `#${sk.seedNumber}` : '-';
+        const seed = sk.seedNumber > 0 ? '#' + sk.seedNumber : '-';
 
-        // Estado
         let statusHtml = '-';
         if (categoryPosition === 1 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-1">1°</span>';
+            statusHtml = '<span class="position pos-1">1&deg;</span>';
         } else if (categoryPosition === 2 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-2">2°</span>';
+            statusHtml = '<span class="position pos-2">2&deg;</span>';
         } else if (categoryPosition === 3 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-3">3°</span>';
+            statusHtml = '<span class="position pos-3">3&deg;</span>';
         } else {
-            statusHtml = `<span class="position pos-default" style="background: #e2e8f0; color: #64748B;">${categoryPosition}°</span>`;
+            statusHtml = '<span class="position pos-default" style="background: #e2e8f0; color: #64748B;">' + categoryPosition + '&deg;</span>';
         }
 
-        htmlContent += `
-            <tr>
-                <td>${categoryPosition}</td>
-                <td>${categoryName.split(' ')[0]}</td>
-                <td style="font-family: monospace; font-size: 10px;">${wssa}</td>
-                <td class="skater-name">${fullName}</td>
-                <td>${seed}</td>
-                <td>${maxPhase}</td>
-                <td class="${j1Score !== '-' ? 'score-medium' : ''}">${j1Score !== '-' ? j1Score.toFixed(1) : '-'}</td>
-                <td class="${j2Score !== '-' ? 'score-medium' : ''}">${j2Score !== '-' ? j2Score.toFixed(1) : '-'}</td>
-                <td class="${j3Score !== '-' ? 'score-medium' : ''}">${j3Score !== '-' ? j3Score.toFixed(1) : '-'}</td>
-                <td class="score ${scoreClass}">${totalScore > 0 ? totalScore.toFixed(2) : '-'}</td>
-                <td>${statusHtml}</td>
-            </tr>
-        `;
+        htmlContent += '            <tr>\n';
+        htmlContent += '                <td>' + categoryPosition + '</td>\n';
+        htmlContent += '                <td>' + categoryName.split(' ')[0] + '</td>\n';
+        htmlContent += '                <td style="font-family: monospace; font-size: 10px;">' + wssa + '</td>\n';
+        htmlContent += '                <td class="skater-name">' + fullName + '</td>\n';
+        htmlContent += '                <td>' + seed + '</td>\n';
+        htmlContent += '                <td>' + maxPhase + '</td>\n';
+        htmlContent += '                <td class="' + (j1Score !== '-' ? 'score-medium' : '') + '">' + (j1Score !== '-' ? j1Score.toFixed(1) : '-') + '</td>\n';
+        htmlContent += '                <td class="' + (j2Score !== '-' ? 'score-medium' : '') + '">' + (j2Score !== '-' ? j2Score.toFixed(1) : '-') + '</td>\n';
+        htmlContent += '                <td class="' + (j3Score !== '-' ? 'score-medium' : '') + '">' + (j3Score !== '-' ? j3Score.toFixed(1) : '-') + '</td>\n';
+        htmlContent += '                <td class="score ' + scoreClass + '">' + (totalScore > 0 ? totalScore.toFixed(2) : '-') + '</td>\n';
+        htmlContent += '                <td>' + statusHtml + '</td>\n';
+        htmlContent += '            </tr>\n';
     });
 
-    htmlContent += `
-        </tbody>
-    </table>
-
-    <div class="footer">
-        <p class="footer-strong">LIGA CHILENA DE INLINE FREESTYLE - TEMPORADA 2026</p>
-        <p>Este documento es un reporte oficial de resultados. Para consultas, contactar a la organización.</p>
-        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #0039A6;">
-            <p style="font-size: 10px; color: #666;">
-                Desarrollado por <strong>Rodrigo Aburto Pereira</strong> - Técnico de Nivel Superior en Informática<br>
-                <span style="color: #D52B1E; font-weight: 700;">VERSIÓN 1.0</span>
-            </p>
-        </div>
-        <img src="${logoUrl}" style="height: 60px; margin-top: 15px;" alt="Logo Liga Chilena">
-    </div>
-</body>
-</html>`;
+    htmlContent += '        </tbody>\n';
+    htmlContent += '    </table>\n\n';
+    
+    htmlContent += '    <div class="footer">\n';
+    htmlContent += '        <p class="footer-strong">LIGA CHILENA DE INLINE FREESTYLE - TEMPORADA 2026</p>\n';
+    htmlContent += '        <p>Este documento es un reporte oficial de resultados. Para consultas, contactar a la organizaci&oacute;n.</p>\n';
+    htmlContent += '        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #0039A6;">\n';
+    htmlContent += '            <p style="font-size: 10px; color: #666;">\n';
+    htmlContent += '                Desarrollado por <strong>Rodrigo Aburto Pereira</strong> - T&eacute;cnico de Nivel Superior en Inform&aacute;tica<br>\n';
+    htmlContent += '                <span style="color: #D52B1E; font-weight: 700;">VERSI&Oacute;N 1.0</span>\n';
+    htmlContent += '            </p>\n';
+    htmlContent += '        </div>\n';
+    htmlContent += '        <img src="' + logoUrl + '" style="height: 60px; margin-top: 15px;" alt="Logo Liga Chilena">\n';
+    htmlContent += '    </div>\n';
+    htmlContent += '</body>\n';
+    htmlContent += '</html>';
 
     showToast('Generando PDF, por favor espera...');
 
     if (window.db && window.db.socket) {
         window.db.socket.emit('export-pdf', { html: htmlContent }, (response) => {
             if (response && response.success) {
-                // Reconstruir el PDF desde base64 (evita corrupción de Buffer en Socket.IO)
                 const binaryStr = atob(response.pdf);
                 const bytes = new Uint8Array(binaryStr.length);
                 for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
@@ -2085,7 +1892,7 @@ function exportTournamentCSV() {
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.setAttribute("href", url);
-                link.setAttribute("download", `slide_resultados_${new Date().toISOString().split('T')[0]}.pdf`);
+                link.setAttribute("download", 'slide_resultados_' + new Date().toISOString().split('T')[0] + '.pdf');
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -2096,7 +1903,7 @@ function exportTournamentCSV() {
             }
         });
     } else {
-        showToast('No hay conexión con el servidor para generar el PDF', true);
+        showToast('No hay conexi&oacute;n con el servidor para generar el PDF', true);
     }
 }
 
