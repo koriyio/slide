@@ -804,7 +804,7 @@ function renderSkaters() {
             <td><span style="background:var(--bg-app); padding:0.2rem 0.6rem; border-radius:12px; font-size:0.8rem; border:1px solid var(--border);">${cat ? cat.name : '-'}</span></td>
             <td>${s.seedNumber > 0 ? '#' + s.seedNumber : 'S/R'}</td>
             <td>
-                <button class="btn-secondary" onclick="deleteSkater(${s.id})" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: #ef4444;"><i class="ph ph-trash"></i></button>
+                <button class="btn-secondary" onclick="deleteSkater('${s.id}')" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: #ef4444;"><i class="ph ph-trash"></i></button>
             </td>
         `;
         ui.skatersTbody.appendChild(tr);
@@ -1357,7 +1357,7 @@ function renderActiveBattle() {
                         // Slot Vacío (Solo habilitar si es el rol actual y NO está completado)
                         if (role === myRole && battle.status !== 'completed') {
                             slotsHtml += `
-                                <button class="btn-empty-slot" onclick="openJudgeModal(${sInfo.id}, '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"
+                                <button class="btn-empty-slot" onclick="openJudgeModal('${sInfo.id}', '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"
                                         style="width:100%; border:1px dashed var(--border); background:none; color:var(--text-muted); padding:0.6rem; border-radius:var(--radius-sm); cursor:pointer; font-size:0.75rem; transition:all 0.2s;">
                                     <i class="ph ph-plus-circle" style="font-size:0.9rem; margin-right:0.3rem; vertical-align:middle;"></i>
                                     Slot ${i + 1}: <span style="opacity:0.5;">+ Añadir</span>
@@ -1390,11 +1390,11 @@ function renderActiveBattle() {
                         }
 
                         // El botón de eliminar SOLO si es el rol actual y NO está completado
-                        const deleteBtn = (role === myRole && battle.status !== 'completed') ? `<button onclick="event.stopPropagation(); deleteRecordedTrick(${sInfo.id}, ${i})" style="position:absolute; top: -5px; right: -5px; background:var(--danger); color:white; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:5;"><i class="ph ph-x"></i></button>` : '';
+                        const deleteBtn = (role === myRole && battle.status !== 'completed') ? `<button onclick="event.stopPropagation(); deleteRecordedTrick('${sInfo.id}', ${i})" style="position:absolute; top: -5px; right: -5px; background:var(--danger); color:white; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:5;"><i class="ph ph-x"></i></button>` : '';
 
                         slotsHtml += `
                             <div style="background:var(--bg-app); border:1px solid var(--border); border-left:3px solid ${badgeColor}; padding:0.6rem; border-radius:var(--radius-sm); position:relative; cursor:${(role === myRole && battle.status !== 'completed') ? 'pointer' : 'default'}; transition:all 0.2s; margin-bottom:0.2rem; ${opacityStyle}"
-                                 ${(role === myRole && battle.status !== 'completed') ? `onclick="openJudgeModal(${sInfo.id}, '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"` : ''}>
+                                 ${(role === myRole && battle.status !== 'completed') ? `onclick="openJudgeModal('${sInfo.id}', '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"` : ''}>
                                 ${droppedBadge}
                                 ${deleteBtn}
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
