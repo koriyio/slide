@@ -1347,6 +1347,36 @@ function renderActiveBattle() {
                     </span>
                 </div>`;
 
+                // --- CONTADORES DE FAMILIAS DE DERRAPES ---
+                const familyCounts = { 'INT': 0, 'EXT': 0, 'FR': 0, 'ESP': 0, 'LAT': 0 };
+                const allTricks = window.db.getTricks();
+                
+                roleSlots.forEach(s => {
+                    if (s && !s.isFail) {
+                        const trk = allTricks.find(t => t.name === s.name);
+                        if (trk) {
+                            if (trk.family.includes('F1')) familyCounts['INT']++;
+                            else if (trk.family.includes('F2')) familyCounts['EXT']++;
+                            else if (trk.family.includes('F3')) familyCounts['FR']++;
+                            else if (trk.family.includes('F4')) familyCounts['ESP']++;
+                            else if (trk.family.includes('F5')) familyCounts['LAT']++;
+                        }
+                    }
+                });
+
+                slotsHtml += '<div class="family-counters">';
+                for (const [key, count] of Object.entries(familyCounts)) {
+                    const isActive = count > 0;
+                    const isHigh = count >= 2;
+                    slotsHtml += `
+                        <div class="family-badge ${isActive ? 'active' : ''} ${isHigh ? 'highlight' : ''}">
+                            <span>${key}</span>
+                            <span class="count">${count}</span>
+                        </div>
+                    `;
+                }
+                slotsHtml += '</div>';
+
                 // Identificar mejores N para marcar descartes (solo para este juez)
                 const slotsWithScores = roleSlots
                     .map((slide, index) => ({ slide, index }))

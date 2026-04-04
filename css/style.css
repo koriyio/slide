@@ -1898,4 +1898,64 @@ body.is-offline .sidebar,
 body.is-offline .main-content {
     margin-top: 2rem;
 }
+
+/* --- CONTADORES DE FAMILIAS DE DERRAPES --- */
+.family-counters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.8rem 0;
+    padding: 0.6rem;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.family-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    opacity: 0.6;
+}
+
+.family-badge.active {
+    opacity: 1;
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+    box-shadow: 0 4px 10px rgba(0, 57, 166, 0.15);
+    transform: translateY(-1.5px);
+}
+
+.family-badge .count {
+    background: var(--primary);
+    color: white;
+    padding: 0 5px;
+    border-radius: 10px;
+    margin-left: 2px;
+    min-width: 16px;
+    text-align: center;
+    font-size: 0.6rem;
+}
+
+.family-badge.active.highlight {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.family-badge.active.highlight .count {
+    background: var(--accent);
+}
+
 
