@@ -763,10 +763,34 @@ function setupTrickSearch() {
 // Actions
 function deleteSkater(id) {
     if (!confirm('¿Seguro que deseas eliminar a este patinador?')) return;
-    window.db.deleteSkater(id);
+
+    // Verificar que la sesión está activa
+    if (!window.db || !window.db.socket || !window.db.socket.connected) {
+        showToast('⚠️ Sin conexión al servidor. Recarga la página e inténtalo de nuevo.', true);
+        return;
+    }
+
+    // Verificar que el usuario es Juez 1
+    if (window.db.currentRole !== 'Juez 1') {
+        showToast('⚠️ Solo el Juez 1 puede eliminar deportistas.', true);
+        return;
+    }
+
+    console.log('[DELETE] Enviando solicitud de borrado para ID:', id, '| Tipo:', typeof id);
+
+    // Emitir directamente con callback para saber si tuvo éxito
+    window.db.socket.emit('delete-skater', String(id), (response) => {
+        console.log('[DELETE] Respuesta del servidor:', response);
+    });
+
+    // Actualizar UI localmente
+    if (window.db.localData && window.db.localData.skaters) {
+        window.db.localData.skaters = window.db.localData.skaters.filter(s => String(s.id) !== String(id));
+    }
+
     renderSkaters();
     renderDashboard();
-    showToast('Patinador eliminado.', true);
+    showToast('Patinador eliminado correctamente.', false);
 }
 
 // Rendering
@@ -794,7 +818,7 @@ function renderSkaters() {
     });
 
     sorted.forEach(s => {
-        const cat = categories.find(c => c.id === s.categoryId);
+        const cat = categories.find(c => c.id == s.categoryId);
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><code style="background:var(--bg-app); padding:0.2rem 0.4rem; border-radius:4px; font-size:0.75rem; color:var(--text-muted);">${s.externalId || '-'}</code></td>
@@ -917,7 +941,7 @@ function renderBattlesByCategory(battles, allSkaters) {
             }
 
             const dbCategories = window.db.getDB().categories || [];
-            const catInfo = dbCategories.find(c => c.id === battle.categoryId);
+            const catInfo = dbCategories.find(c => c.id == battle.categoryId);
             const catName = catInfo ? catInfo.name : '';
 
             let header = `
@@ -932,7 +956,7 @@ function renderBattlesByCategory(battles, allSkaters) {
 
             let listHtml = '<ul style="list-style:none; padding:0; flex:1; display:flex; flex-direction:column; gap:0.5rem;">';
             battle.skaters.forEach(bs => {
-                const sInfo = allSkaters.find(s => s.id === bs.skaterId);
+                const sInfo = allSkaters.find(s => s.id == bs.skaterId);
                 if (sInfo) {
                     let statusHtml = '';
                     let progressHtml = '';
@@ -1083,10 +1107,10 @@ function openJudgeModal(skaterId, skaterName, slotIndex) {
 // Actualizar contador de familias y vista previa de combo
 function updateFamilyCounterAndCombo(skaterId, currentSlotIndex) {
     const db = window.db.getDB();
-    const battle = db.battles.find(b => b.id === currentBattleId);
+    const battle = db.battles.find(b => b.id == currentBattleId);
     if (!battle) return;
 
-    const skater = battle.skaters.find(s => s.skaterId === skaterId);
+    const skater = battle.skaters.find(s => s.skaterId == skaterId);
     if (!skater) return;
 
     // Obtener trucos actuales del juez actual en otros slots
@@ -1224,7 +1248,7 @@ function renderActiveBattle() {
     }
 
     battle.skaters.forEach(bs => {
-        const sInfo = db.skaters.find(s => s.id === bs.skaterId);
+        const sInfo = db.skaters.find(s => s.id == bs.skaterId);
         if (!sInfo) return;
 
         // Dinámico: 5 slots en la Final, 4 en el resto
@@ -1296,7 +1320,7 @@ function renderActiveBattle() {
                 ${battle.status === 'completed' ? (() => {
                 // Ordenar skaters por puntaje para determinar la posición
                 const sortedSkaters = [...battle.skaters].sort((a, b) => b.totalScore - a.totalScore);
-                const position = sortedSkaters.findIndex(s => s.skaterId === bs.skaterId) + 1;
+                const position = sortedSkaters.findIndex(s => s.skaterId == bs.skaterId) + 1;
 
                 // Determinar sufijo ordinal (1º, 2º, 3º, 4º, etc.)
                 const sufijo = 'º';
@@ -1501,7 +1525,7 @@ function renderBrackets() {
                 : battle.skaters;
 
             sortedSkaters.forEach((bs, idx) => {
-                const sInfo = db.skaters.find(s => s.id === bs.skaterId);
+                const sInfo = db.skaters.find(s => s.id == bs.skaterId);
                 const isQualified = bs.qualified === true;
                 const mark = battle.status === 'completed' && isQualified
                     ? '<i class="ph-fill ph-check-circle" style="color:#10B981;" title="Clasificado"></i>'
@@ -1579,11 +1603,11 @@ function exportTournamentCSV() {
     // Calcular posición final de cada skater en el campeonato
     const skaterResults = skaters.map(sk => {
         const refCatId = sk.categoryId || sk.category || 'unknown';
-        const cat = categories.find(c => c.id === refCatId);
+        const cat = categories.find(c => c.id == refCatId);
         const categoryName = cat ? cat.name : refCatId;
 
         // Buscar todas las batallas de este patinador
-        const skaterBattles = battles.filter(b => b.skaters.some(s => s.skaterId === sk.id));
+        const skaterBattles = battles.filter(b => b.skaters.some(s => s.skaterId == sk.id));
 
         let finalPhase = 'Preliminar';
         let finalPhaseNum = 1;
@@ -2266,12 +2290,14 @@ function launchConfetti() {
 // Boot up
 document.addEventListener('DOMContentLoaded', init);
 
-// Register Service Worker for PWA
+// Service Worker desactivado para evitar conflictos de caché
+/*
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed', err));
     });
 }
+*/
 
 // Online/Offline detection
 window.addEventListener('online', () => {

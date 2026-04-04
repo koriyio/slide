@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 CREATE TABLE IF NOT EXISTS skaters (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     category_id TEXT NOT NULL REFERENCES categories(id),
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS skaters (
 );
 
 CREATE TABLE IF NOT EXISTS battles (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     category_id TEXT NOT NULL REFERENCES categories(id),
     phase TEXT NOT NULL,
     heat_number INTEGER NOT NULL,
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS battles (
 
 CREATE TABLE IF NOT EXISTS battle_skaters (
     id SERIAL PRIMARY KEY,
-    battle_id INTEGER NOT NULL REFERENCES battles(id),
-    skater_id INTEGER NOT NULL REFERENCES skaters(id),
+    battle_id TEXT NOT NULL REFERENCES battles(id),
+    skater_id TEXT NOT NULL REFERENCES skaters(id),
     judging JSONB NOT NULL DEFAULT '{}',
     total_score REAL DEFAULT 0,
     qualified INTEGER DEFAULT 0,

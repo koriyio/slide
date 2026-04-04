@@ -169,10 +169,22 @@ io.on('connection', async (socket) => {
         }
     });
 
-    socket.on('delete-skater', async (id) => {
-        if (!requireAuth('Juez 1', 'eliminar patinador')) return;
-        await db.deleteSkater(id);
-        await broadcastUpdate();
+    socket.on('delete-skater', async (id, callback) => {
+        console.log(`[AUDIT] Solicitud de borrado para skater ID: ${id} | Tipo: ${typeof id} | Rol: ${currentRole}`);
+        if (!requireAuth('Juez 1', 'eliminar patinador')) {
+            console.warn(`[AUDIT] Borrado rechazado - rol actual: ${currentRole}`);
+            if (callback) callback({ success: false, message: 'No autorizado' });
+            return;
+        }
+        try {
+            await db.deleteSkater(String(id));
+            console.log(`[AUDIT] Patinador ${id} eliminado exitosamente`);
+            await broadcastUpdate();
+            if (callback) callback({ success: true });
+        } catch (err) {
+            console.error(`[AUDIT] Error al eliminar patinador ${id}:`, err.message);
+            if (callback) callback({ success: false, message: err.message });
+        }
     });
 
     socket.on('import-skaters', async (newSkaters) => {

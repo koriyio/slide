@@ -124,7 +124,7 @@ class SlideStorage {
             if (callback) callback(response);
             if (!response || !response.success) {
                 // Si falló, revertir el cambio local
-                this.localData.skaters = this.localData.skaters.filter(s => s.id !== newSkater.id);
+                this.localData.skaters = this.localData.skaters.filter(s => s.id != newSkater.id);
                 if (window.renderSkaters) renderSkaters();
                 if (window.showToast) showToast(response?.message || 'Error al agregar patinador', true);
             }
@@ -135,13 +135,13 @@ class SlideStorage {
     deleteSkater(id) {
         // Actualizar localmente PRIMERO
         if (this.localData.skaters) {
-            this.localData.skaters = this.localData.skaters.filter(s => s.id !== id);
+            this.localData.skaters = this.localData.skaters.filter(s => s.id != id);
         }
         // Eliminar también de las batallas locales
         if (this.localData.battles) {
             this.localData.battles.forEach(battle => {
                 if (battle.skaters) {
-                    battle.skaters = battle.skaters.filter(s => s.skaterId !== id);
+                    battle.skaters = battle.skaters.filter(s => s.skaterId != id);
                 }
             });
         }
