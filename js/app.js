@@ -1660,7 +1660,14 @@ function exportTournamentCSV() {
             if (b.finalPhaseNum !== a.finalPhaseNum) return b.finalPhaseNum - a.finalPhaseNum;
             return b.totalScore - a.totalScore;
         });
-        catSkaters.forEach((sk, idx) => sk.finalPosition = idx + 1);
+        catSkaters.forEach((sk, idx) => {
+            sk.finalPosition = idx + 1;
+            // Dinamizamiento de Fase según Ranking (1-4 Final, 5-8 Semifinal, 9-16 Cuartos)
+            if (sk.finalPosition <= 4) sk.finalPhase = 'Final';
+            else if (sk.finalPosition <= 8) sk.finalPhase = 'Semifinal';
+            else if (sk.finalPosition <= 16) sk.finalPhase = 'Cuartos de Final';
+            else sk.finalPhase = 'Preliminar';
+        });
     });
 
     const sortedSkaters = Object.values(byCategory).flat().sort((a, b) => {
