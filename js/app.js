@@ -113,7 +113,7 @@ function setupAuth() {
             }
 
             if (targetRole) {
-                // Iniciar sesi├│n con credenciales completas
+                // Iniciar sesiión con credenciales completas
                 window.db.login(targetRole, u, p, (success, msg) => {
                     if (success) {
                         ui.authScreen.style.display = 'none';
@@ -139,7 +139,7 @@ function setupLogin() {
         btn.addEventListener('click', () => {
             const role = btn.dataset.role;
 
-            // Credenciales por defecto seg├║n el rol
+            // Credenciales por defecto según el rol
             const defaultCredentials = {
                 'Juez 1': { user: 'Slide', pass: 'slide2026' },
                 'Juez 2': { user: 'juez2', pass: 'slide' },
@@ -179,7 +179,7 @@ function setupLogin() {
 
     if (ui.btnLogout) {
         ui.btnLogout.addEventListener('click', () => {
-            if (confirm('┬┐Seguro que deseas salir?')) {
+            if (confirm('¿Seguro que deseas salir?')) {
                 if (window.db && window.db.socket) {
                     window.db.socket.emit('logout');
                     // Give server a tiny bit of time to process the logout event before reloading
@@ -302,7 +302,7 @@ function setupEventListeners() {
             return;
         }
         if (!catId) {
-            showToast('Debes seleccionar una categor├¡a', true);
+            showToast('Debes seleccionar una categoría', true);
             return;
         }
 
@@ -315,7 +315,7 @@ function setupEventListeners() {
                 ui.formSkater.reset();
                 renderSkaters();
                 renderDashboard();
-                showToast('Ô£ô Patinador inscrito con ├®xito');
+                showToast('✓ Patinador inscrito con éxito');
             } else {
                 showToast('Error: ' + (response?.message || 'No se pudo inscribir el patinador'), true);
             }
@@ -334,7 +334,7 @@ function setupEventListeners() {
             const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
             if (skatersCount < 3) return showToast('Se necesitan al menos 3 patinadores para hacer grupos', true);
 
-            if (confirm(`Se van a recargar todos los grupos para la categor├¡a seleccionada. ┬┐Est├ís seguro?`)) {
+            if (confirm(`Se van a recargar todos los grupos para la categoría seleccionada. ¿Estás seguro?`)) {
                 window.db.generateHeats(catId);
                 showToast('Generando grupos en el servidor...');
             }
@@ -343,7 +343,7 @@ function setupEventListeners() {
             let generatedAny = false;
             let insufficientAny = false;
 
-            if (confirm(`Se van a generar los grupos para TODAS las categor├¡as. ┬┐Est├ís seguro?`)) {
+            if (confirm(`Se van a generar los grupos para TODAS las categorías. ¿Estás seguro?`)) {
                 categories.forEach(cat => {
                     const skatersCount = window.db.getSkaters().filter(s => s.categoryId === cat.id).length;
                     if (skatersCount >= 3) {
@@ -355,10 +355,10 @@ function setupEventListeners() {
                 });
 
                 if (generatedAny) {
-                    showToast('Generando grupos para todas las categor├¡as...');
+                    showToast('Generando grupos para todas las categorías...');
                 } else {
-                    if (insufficientAny) showToast('No hay suficientes patinadores (min 3) en ninguna categor├¡a con inscritos', true);
-                    else showToast('No hay patinadores inscritos en ninguna categor├¡a', true);
+                    if (insufficientAny) showToast('No hay suficientes patinadores (min 3) en ninguna categoría con inscritos', true);
+                    else showToast('No hay patinadores inscritos en ninguna categoría', true);
                 }
             }
         }
@@ -372,7 +372,7 @@ function setupEventListeners() {
     };
 
     ui.btnFinishBattle.onclick = () => {
-        if (!confirm('┬┐Est├ís seguro de finalizar esta batalla? Esto calcular├í los ganadores y bloquear├í la edici├│n.')) return;
+        if (!confirm('¿Estás seguro de finalizar esta batalla? Esto calcular├í los ganadores y bloquear├í la ediciión.')) return;
 
         window.db.finishBattle(currentBattleId, (res) => {
             if (res && res.success) {
@@ -450,7 +450,7 @@ function setupEventListeners() {
         a.download = `slide_battle_backup_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('Base de datos respaldada con ├®xito.');
+        showToast('Base de datos respaldada con éxito.');
     };
 
     ui.inputImportDB.onchange = (e) => {
@@ -463,7 +463,7 @@ function setupEventListeners() {
                 const json = JSON.parse(event.target.result);
                 if (json.skaters && json.categories && json.battles) {
                     window.db.saveDB(json);
-                    showToast('Base de datos restaurada con ├®xito. Recargando...');
+                    showToast('Base de datos restaurada con éxito. Recargando...');
                     setTimeout(() => location.reload(), 1500);
                 } else {
                     showToast('Formato de archivo inv├ílido.', true);
@@ -476,13 +476,13 @@ function setupEventListeners() {
     };
 
     ui.btnResetDB.onclick = () => {
-        const password = prompt('ÔÜá´©Å PELIGRO: Esto ELIMINAR├ü TODOS los datos de la competencia.\nPara confirmar, escribe "ELIMINAR":');
+        const password = prompt('⚠️ PELIGRO: Esto ELIMINAR├ü TODOS los datos de la competencia.\nPara confirmar, escribe "ELIMINAR":');
         if (password === 'ELIMINAR') {
             window.db.resetDB();
             showToast('Base de datos eliminada. Recargando...', true);
             setTimeout(() => location.reload(), 1500);
         } else if (password !== null) {
-            showToast('Confirmaci├│n incorrecta. Acci├│n cancelada.', true);
+            showToast('Confirmaciión incorrecta. Acciión cancelada.', true);
         }
     };
 
@@ -491,9 +491,9 @@ function setupEventListeners() {
     };
 
     ui.btnRestartServer.onclick = () => {
-        if (confirm('┬┐Reiniciar el servidor? La conexi├│n se perder├í por unos segundos.')) {
+        if (confirm('¿Reiniciar el servidor? La conexiión se perder├í por unos segundos.')) {
             window.db.socket.emit('restart-server');
-            showToast('Enviando se├▒al de reinicio...', true);
+            showToast('Enviando señal de reinicio...', true);
         }
     };
 
@@ -502,7 +502,7 @@ function setupEventListeners() {
     ui.btnImportBulk.onclick = () => {
         ui.formBulk.reset();
         const cats = window.db.getCategories();
-        ui.bulkCategory.innerHTML = '<option value="">Seleccionar categor├¡a...</option>';
+        ui.bulkCategory.innerHTML = '<option value="">Seleccionar categoría...</option>';
         cats.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.id;
@@ -547,7 +547,7 @@ function setupEventListeners() {
                 const firstName = nameParts[0];
                 const lastName = nameParts.slice(1).join(' ') || ' ';
 
-                // Si el rank no es v├ílido, intentar usar el ├¡ndice o 0
+                // Si el rank no es v├ílido, intentar usar el índice o 0
                 if (isNaN(rank)) rank = count + 1;
 
                 window.db.addSkater(firstName, lastName, catId, rank, idCode, nationality);
@@ -559,7 +559,7 @@ function setupEventListeners() {
             ui.modalBulk.classList.add('hidden');
             renderSkaters();
             renderDashboard();
-            showToast(`${count} patinadores importados con ├®xito.`);
+            showToast(`${count} patinadores importados con éxito.`);
         } else {
             showToast('No se pudieron procesar los datos. Revisa el formato (Rank; Nombre; Nat; ID)', true);
         }
@@ -569,13 +569,13 @@ function setupEventListeners() {
 function populateCategories() {
     const cats = window.db.getCategories();
 
-    // Guardar selecci├│n actual para no perderla al actualizar
+    // Guardar selecciión actual para no perderla al actualizar
     const currentBattlesCat = ui.battlesCategorySelect.value;
     const currentBracketsCat = ui.bracketsCategorySelect.value;
 
-    ui.categorySelect.innerHTML = '<option value="">Seleccionar categor├¡a...</option>';
-    ui.battlesCategorySelect.innerHTML = '<option value="">Todas las categor├¡as</option>';
-    ui.bracketsCategorySelect.innerHTML = '<option value="">Seleccionar categor├¡a...</option>';
+    ui.categorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
+    ui.battlesCategorySelect.innerHTML = '<option value="">Todas las categorías</option>';
+    ui.bracketsCategorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
 
     cats.forEach(c => {
         // Form Modal
@@ -597,7 +597,7 @@ function populateCategories() {
         ui.bracketsCategorySelect.appendChild(opt3);
     });
 
-    // Restaurar selecci├│n si exist├¡a y sigue siendo v├ílida
+    // Restaurar selecciión si existía y sigue siendo v├ílida
     if (currentBattlesCat) ui.battlesCategorySelect.value = currentBattlesCat;
     if (currentBracketsCat) ui.bracketsCategorySelect.value = currentBracketsCat;
 }
@@ -720,7 +720,7 @@ function setupTrickSearch() {
                 suggestionsBox.innerHTML = '';
             }
 
-            // Tambi├®n filtrar el dropdown original
+            // También filtrar el dropdown original
             populateTricks(e.target.value);
         });
 
@@ -762,7 +762,7 @@ function setupTrickSearch() {
 // Actions
 // Actions
 function deleteSkater(id) {
-    if (!confirm('┬┐Seguro que deseas eliminar a este patinador?')) return;
+    if (!confirm('¿Seguro que deseas eliminar a este patinador?')) return;
     console.log('[DELETE] Eliminando ID:', id);
     window.db.socket.emit('delete-skater', String(id));
     if (window.db.localData && window.db.localData.skaters) {
@@ -787,7 +787,7 @@ function renderSkaters() {
     ui.skatersTbody.innerHTML = '';
 
     if (skaters.length === 0) {
-        ui.skatersTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No hay patinadores inscritos a├║n.</td></tr>';
+        ui.skatersTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No hay patinadores inscritos aún.</td></tr>';
         return;
     }
 
@@ -822,7 +822,7 @@ function renderBattles() {
     const allSkaters = window.db.getSkaters();
     let battles = [];
 
-    // Si hay categor├¡a seleccionada, filtrar por ella. Si no, mostrar TODAS las batallas
+    // Si hay categoría seleccionada, filtrar por ella. Si no, mostrar TODAS las batallas
     if (catId) {
         battles = window.db.getBattlesByCategory(catId);
 
@@ -830,10 +830,10 @@ function renderBattles() {
         if (battles.length === 0) {
             const skatersInCat = window.db.getSkaters().filter(s => s.categoryId === catId);
             if (skatersInCat.length >= 3) {
-                // Generaci├│n autom├ítica si hay suficientes
+                // Generaciión autom├ítica si hay suficientes
                 ui.battlesContainer.innerHTML = `
                     <div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">
-                        <p>No hay batallas generadas para esta categor├¡a, pero hay ${skatersInCat.length} competidores listos.</p>
+                        <p>No hay batallas generadas para esta categoría, pero hay ${skatersInCat.length} competidores listos.</p>
                         <button class="btn-primary" onclick="generateHeats('${catId}')" style="margin-top:1rem;">Generar Grupos Ahora</button>
                     </div>`;
                 return;
@@ -843,16 +843,16 @@ function renderBattles() {
             }
         }
     } else {
-        // Obtener todas las batallas de todas las categor├¡as (mejora de master)
+        // Obtener todas las batallas de todas las categorías (mejora de master)
         battles = window.db.getBattles() || [];
     }
 
     if (battles.length === 0) {
-        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas generadas a├║n. Selecciona una categor├¡a para empezar.</div>';
+        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas generadas aún. Selecciona una categoría para empezar.</div>';
         return;
     }
 
-    // Agrupar batallas por categor├¡a para mostrar cuando se muestran todas
+    // Agrupar batallas por categoría para mostrar cuando se muestran todas
     const battlesByCategory = {};
     battles.forEach(battle => {
         if (!battlesByCategory[battle.categoryId]) {
@@ -861,12 +861,12 @@ function renderBattles() {
         battlesByCategory[battle.categoryId].push(battle);
     });
 
-    // Si hay categor├¡a seleccionada, renderizar normalmente
+    // Si hay categoría seleccionada, renderizar normalmente
     if (catId) {
         renderBattlesByCategory(battles, allSkaters);
         checkAndShowNextPhaseButton(catId);
     } else {
-        // Renderizar todas las batallas agrupadas por categor├¡a
+        // Renderizar todas las batallas agrupadas por categoría
         const categories = window.db.getCategories();
         Object.keys(battlesByCategory).forEach(categoryId => {
             const category = categories.find(c => c.id === categoryId);
@@ -912,7 +912,7 @@ function renderBattlesByCategory(battles, allSkaters) {
             if (battle.status === 'completed') {
                 statusBadge = '<span class="status-badge status-completed"><i class="ph-fill ph-check-circle"></i> Finalizada</span>';
             } else {
-                // Verificar si hay trucos registrados (parcial) o est├í vac├¡a (pendiente)
+                // Verificar si hay trucos registrados (parcial) o est├í vacía (pendiente)
                 const hasTricks = battle.skaters.some(bs => bs.judging && Object.values(bs.judging).some(role => role.some(t => t !== null)));
                 statusBadge = `<span class="status-badge ${hasTricks ? 'status-partial' : 'status-pending'}">
                     <i class="ph ph-${hasTricks ? 'clock' : 'circle'}"></i>
@@ -1016,7 +1016,7 @@ function renderBattlesByCategory(battles, allSkaters) {
 
 // Check if we can generate next phase directly from Battles view
 function checkAndShowNextPhaseButton(catId) {
-    if (!catId) return; // No mostrar bot├│n cuando se ven todas las categor├¡as
+    if (!catId) return; // No mostrar botión cuando se ven todas las categorías
 
     const battles = window.db.getBattlesByCategory(catId);
     const currentBattles = battles.filter(b => b.phase === battles[battles.length - 1].phase);
@@ -1098,7 +1098,7 @@ function updateFamilyCounterAndCombo(skaterId, currentSlotIndex) {
     const judging = skater.judging || {};
     const currentJudgeTricks = judging[role] || [];
 
-    // Contar familias ├║nicas
+    // Contar familias únicas
     const families = new Set();
     const familyNames = [];
 
@@ -1170,7 +1170,7 @@ function updateFamilyCounterAndCombo(skaterId, currentSlotIndex) {
 
 function renderActiveBattle() {
     const db = window.db.getDB();
-    // Usar == para permitir comparaci├│n entre string (de la UI) y number (de la DB)
+    // Usar == para permitir comparaciión entre string (de la UI) y number (de la DB)
     const battle = db.battles.find(b => b.id == currentBattleId);
     if (!battle) {
         console.error("Batalla no encontrada:", currentBattleId);
@@ -1190,7 +1190,7 @@ function renderActiveBattle() {
             launchConfetti();
         }
     } else {
-        // Solo el Juez 1 (Admin) puede ver el bot├│n de finalizar
+        // Solo el Juez 1 (Admin) puede ver el botión de finalizar
         const role = window.db.currentRole;
         ui.btnFinishBattle.style.display = (role === 'Juez 1') ? 'inline-flex' : 'none';
     }
@@ -1218,7 +1218,7 @@ function renderActiveBattle() {
             console.error("Error al renderizar podio:", e);
         }
 
-        // Tambi├®n mostrar lista completa de resultados
+        // También mostrar lista completa de resultados
         const resultsContainer = document.createElement('div');
         resultsContainer.style.cssText = 'grid-column: 1 / -1; margin-top:1rem;';
         resultsContainer.innerHTML = '<h3 style="color:var(--text-muted); margin-bottom:1rem; font-size:1rem;"><i class="ph ph-list"></i> Resultados Completos</h3>';
@@ -1298,12 +1298,12 @@ function renderActiveBattle() {
                 </div>
 
                 ${battle.status === 'completed' ? (() => {
-                // Ordenar skaters por puntaje para determinar la posici├│n
+                // Ordenar skaters por puntaje para determinar la posiciión
                 const sortedSkaters = [...battle.skaters].sort((a, b) => b.totalScore - a.totalScore);
                 const position = sortedSkaters.findIndex(s => s.skaterId == bs.skaterId) + 1;
 
-                // Determinar sufijo ordinal (1┬║, 2┬║, 3┬║, 4┬║, etc.)
-                const sufijo = '┬║';
+                // Determinar sufijo ordinal (1°, 2°, 3°, 4°, etc.)
+                const sufijo = '°';
 
                 // Colores diferentes para top 3
                 let colorBg, colorText, borderStyle;
@@ -1337,9 +1337,9 @@ function renderActiveBattle() {
             if (!role) return;
             const roleSlots = judging[role] || [];
 
-            // Si hay datos para este juez, mostrar secci├│n
+            // Si hay datos para este juez, mostrar secciión
             if (roleSlots.some(s => s !== null && s !== undefined) || rolesToShow.length === 1) {
-                // T├¡tulo de la secci├│n de este juez
+                // Título de la secciión de este juez
                 slotsHtml += `<div style="text-align:left; margin-bottom:0.5rem; padding-bottom:0.3rem; border-bottom:1px solid var(--border); margin-top:0.5rem;">
                     <span style="font-size:0.65rem; text-transform:uppercase; color:var(--primary); letter-spacing:1px; font-weight:700;">
                         <i class="ph-fill ph-${role === 'Juez 1' ? 'shield-star' : 'user'}"></i>
@@ -1391,17 +1391,17 @@ function renderActiveBattle() {
                 for (let i = 0; i < maxSlots; i++) {
                     const slide = roleSlots[i];
                     if (!slide) {
-                        // Slot Vac├¡o (Solo habilitar si es el rol actual y NO est├í completado)
+                        // Slot Vacío (Solo habilitar si es el rol actual y NO est├í completado)
                         if (role === myRole && battle.status !== 'completed') {
                             slotsHtml += `
                                 <button class="btn-empty-slot" onclick="openJudgeModal('${sInfo.id}', '${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}', ${i})"
                                         style="width:100%; border:1px dashed var(--border); background:none; color:var(--text-muted); padding:0.6rem; border-radius:var(--radius-sm); cursor:pointer; font-size:0.75rem; transition:all 0.2s;">
                                     <i class="ph ph-plus-circle" style="font-size:0.9rem; margin-right:0.3rem; vertical-align:middle;"></i>
-                                    Slot ${i + 1}: <span style="opacity:0.5;">+ A├▒adir</span>
+                                    Slot ${i + 1}: <span style="opacity:0.5;">+ Añadir</span>
                                 </button>
                             `;
                         } else if (rolesToShow.length === 1) {
-                            // Si solo se muestra uno y est├í vac├¡o, mostrar placeholder
+                            // Si solo se muestra uno y est├í vacío, mostrar placeholder
                             slotsHtml += `<div style="font-size:0.7rem; color:var(--text-muted); font-style:italic; padding-left:0.5rem;">Vacio</div>`;
                         }
                     } else {
@@ -1426,7 +1426,7 @@ function renderActiveBattle() {
                             stopBonusText = `<span style="color:#F59E0B; font-weight:600;"><i class="ph-fill ph-hand-palm"></i> Stop ${stopLabels[slide.stopLevel]}</span>`;
                         }
 
-                        // El bot├│n de eliminar SOLO si es el rol actual y NO est├í completado
+                        // El botión de eliminar SOLO si es el rol actual y NO est├í completado
                         const deleteBtn = (role === myRole && battle.status !== 'completed') ? `<button onclick="event.stopPropagation(); deleteRecordedTrick('${sInfo.id}', ${i})" style="position:absolute; top: -5px; right: -5px; background:var(--danger); color:white; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:5;"><i class="ph ph-x"></i></button>` : '';
 
                         slotsHtml += `
@@ -1471,11 +1471,11 @@ function renderBrackets() {
     const battles = window.db.getBattlesByCategory(catId);
 
     if (battles.length === 0) {
-        ui.bracketContainer.innerHTML = '<div style="padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas en esta categor├¡a a├║n.</div>';
+        ui.bracketContainer.innerHTML = '<div style="padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas en esta categoría aún.</div>';
         return;
     }
 
-    // Fases soportadas (espa├▒ol e ingl├®s cl├ísico)
+    // Fases soportadas (español e inglés cl├ísico)
     const phases = ['Preliminar', 'Cuartos', 'Semifinal', 'Final'];
     const altPhases = {
         'Preliminar': ['Preliminar', 'Heat'],
@@ -1501,7 +1501,7 @@ function renderBrackets() {
     const uncompleted = currentBattles.some(b => b.status !== 'completed');
     const isFinal = lastPhaseBase === 'Final';
 
-    // Obtenemos el ID de categor├¡a de la primera batalla en caso de estar viendo "Todas las categor├¡as"
+    // Obtenemos el ID de categoría de la primera batalla en caso de estar viendo "Todas las categorías"
     const targetCatId = catId || (battles.length > 0 ? battles[battles.length - 1].categoryId : '');
 
     let nextPhaseBtnHtml = '';
@@ -1545,11 +1545,11 @@ function renderBrackets() {
                     : '';
                 const bg = isQualified ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.05)';
                 const positionBadge = battle.status === 'completed'
-                    ? (idx === 0 ? '­ƒÑç' : idx === 1 ? '­ƒÑê' : idx === 2 ? '­ƒÑë' : idx === 3 ? '4┬║' : '')
+                    ? (idx === 0 ? '­ƒÑç' : idx === 1 ? '­ƒÑê' : idx === 2 ? '­ƒÑë' : idx === 3 ? '4°' : '')
                     : '';
 
                 const finalMark = battle.phase === 'Final' && battle.status === 'completed'
-                    ? `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">Posici├│n: ${idx + 1}┬║</span>`
+                    ? `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">Posiciión: ${idx + 1}°</span>`
                     : mark;
 
                 skatersHtml += `
@@ -1584,17 +1584,17 @@ function renderBrackets() {
 }
 
 window.triggerNextPhase = (catId) => {
-    if (confirm('┬┐Generar siguiente ronda? Los clasificados pasar├ín a nuevas llaves.')) {
+    if (confirm('¿Generar siguiente ronda? Los clasificados pasar├ín a nuevas llaves.')) {
         if (window.db.generateNextPhase(catId)) {
             showToast('Generando siguiente ronda...');
         } else {
-            showToast('No se pudo generar. Aseg├║rate de que todos los grupos est├®n finalizados.', true);
+            showToast('No se pudo generar. Aseg├║rate de que todos los grupos estén finalizados.', true);
         }
     }
 }
 
 window.deleteRecordedTrick = (skaterId, slotIdx) => {
-    if (confirm('┬┐Eliminar este truco?')) {
+    if (confirm('¿Eliminar este truco?')) {
         if (window.db.deleteTrick(currentBattleId, skaterId, slotIdx)) {
             renderActiveBattle();
             showToast('Truco eliminado');
@@ -1613,7 +1613,7 @@ function exportTournamentCSV() {
 
     if (skaters.length === 0) return showToast('No hay datos para exportar', true);
 
-    // Calcular posici├│n final de cada skater en el campeonato
+    // Calcular posición final de cada skater en el campeonato
     const skaterResults = skaters.map(sk => {
         const refCatId = sk.categoryId || sk.category || 'unknown';
         const cat = categories.find(c => c.id == refCatId);
@@ -1698,8 +1698,8 @@ function exportTournamentCSV() {
         };
     });
 
-    // Calcular posiciones globales por categor├¡a
-    // Primero agrupar por categor├¡a
+    // Calcular posiciones globales por categoría
+    // Primero agrupar por categoría
     const byCategory = {};
     skaterResults.forEach(sk => {
         const refCatId = sk.categoryId || sk.category || 'unknown';
@@ -1709,7 +1709,7 @@ function exportTournamentCSV() {
         byCategory[refCatId].push(sk);
     });
 
-    // Para cada categor├¡a, calcular posiciones
+    // Para cada categoría, calcular posiciones
     Object.keys(byCategory).forEach(catId => {
         const categorySkaters = byCategory[catId];
 
@@ -1796,7 +1796,7 @@ function exportTournamentCSV() {
             });
         }
 
-        // 5. Clasificados que no tienen posici├│n (usan posici├│n por fase)
+        // 5. Clasificados que no tienen posiciión (usan posiciión por fase)
         categorySkaters.forEach(sk => {
             if (sk.finalPosition === null && sk.isQualified) {
                 if (sk.finalPhase === 'Final') sk.finalPosition = sk.isQualified ? 4 : 13;
@@ -1806,9 +1806,9 @@ function exportTournamentCSV() {
         });
     });
 
-    // ORDENAR POR: 1) Categor├¡a, 2) Fase alcanzada (Final primero), 3) Puntaje total, 4) Posici├│n final
+    // ORDENAR POR: 1) Categoría, 2) Fase alcanzada (Final primero), 3) Puntaje total, 4) Posiciión final
     let sortedSkaters = skaterResults.sort((a, b) => {
-        // Primero por categor├¡a
+        // Primero por categoría
         if (a.categoryId !== b.categoryId) return a.categoryId.localeCompare(b.categoryId);
 
         // Luego por fase alcanzada (Final > Semifinal > Cuartos > Preliminar)
@@ -1817,7 +1817,7 @@ function exportTournamentCSV() {
         // Luego por puntaje total (m├ís alto primero)
         if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
 
-        // Luego por posici├│n final del grupo (si existe)
+        // Luego por posiciión final del grupo (si existe)
         if (a.finalPosition && b.finalPosition) return a.finalPosition - b.finalPosition;
         if (a.finalPosition && !b.finalPosition) return -1;
         if (!a.finalPosition && b.finalPosition) return 1;
@@ -2046,7 +2046,7 @@ function exportTournamentCSV() {
             <div class="header-text">
                 <h1>­ƒÅå LIGA CHILENA DE INLINE FREESTYLE</h1>
                 <p>Campeonato Nacional 2026 - Reporte Oficial de Resultados</p>
-                <div class="league-badge">Ô¡É Temporada 2026 Ô¡É</div>
+                <div class="league-badge">⭐ Temporada 2026 ⭐</div>
             </div>
         </div>
     </div>
@@ -2056,7 +2056,7 @@ function exportTournamentCSV() {
         <thead>
             <tr>
                 <th style="width: 50px;">#</th>
-                <th style="width: 80px;">Categor├¡a</th>
+                <th style="width: 80px;">Categoría</th>
                 <th style="width: 80px;">ID/WSSA</th>
                 <th style="width: 200px;">Patinador</th>
                 <th style="width: 50px;">Seed</th>
@@ -2077,7 +2077,7 @@ function exportTournamentCSV() {
     sortedSkaters.forEach(sk => {
         const categoryName = sk.categoryName;
 
-        // Si cambia la categor├¡a, agregar separador y resetear posici├│n
+        // Si cambia la categoría, agregar separador y resetear posiciión
         if (categoryName !== currentCategory) {
             currentCategory = categoryName;
             categoryPosition = 1;
@@ -2106,7 +2106,7 @@ function exportTournamentCSV() {
         if (totalScore >= 34) scoreClass = 'score-high';
         else if (totalScore < 17) scoreClass = 'score-low';
 
-        // Formatear nombres en MAY├ÜSCULAS
+        // Formatear nombres en MAYÚSCULAS
         const fullName = `${sk.firstName} ${sk.lastName}`.toUpperCase();
         const wssa = sk.externalId || '-';
         const seed = sk.seedNumber > 0 ? `#${sk.seedNumber}` : '-';
@@ -2114,13 +2114,13 @@ function exportTournamentCSV() {
         // Estado
         let statusHtml = '-';
         if (categoryPosition === 1 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-1">­ƒÑç 1┬║</span>';
+            statusHtml = '<span class="position pos-1">­ƒÑç 1°</span>';
         } else if (categoryPosition === 2 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-2">­ƒÑê 2┬║</span>';
+            statusHtml = '<span class="position pos-2">­ƒÑê 2°</span>';
         } else if (categoryPosition === 3 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-3">­ƒÑë 3┬║</span>';
+            statusHtml = '<span class="position pos-3">­ƒÑë 3°</span>';
         } else {
-            statusHtml = `<span class="position pos-default" style="background: #e2e8f0; color: #64748B;">${categoryPosition}┬║</span>`;
+            statusHtml = `<span class="position pos-default" style="background: #e2e8f0; color: #64748B;">${categoryPosition}°</span>`;
         }
 
         htmlContent += `
@@ -2146,10 +2146,10 @@ function exportTournamentCSV() {
 
     <div class="footer">
         <p class="footer-strong">­ƒÅå LIGA CHILENA DE INLINE FREESTYLE - TEMPORADA 2026</p>
-        <p>Este documento es un reporte oficial de resultados. Para consultas, contactar a la organizaci├│n.</p>
+        <p>Este documento es un reporte oficial de resultados. Para consultas, contactar a la organizaciión.</p>
         <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #0039A6;">
             <p style="font-size: 10px; color: #666;">
-                ­ƒÆ╗ Desarrollado por <strong>Rodrigo Aburto Pereira</strong> - T├®cnico de Nivel Superior en Inform├ítica<br>
+                ­ƒÆ╗ Desarrollado por <strong>Rodrigo Aburto Pereira</strong> - Técnico de Nivel Superior en Inform├ítica<br>
                 <span style="color: #D52B1E; font-weight: 700;">­ƒÜÇ VERSI├ôN 1.0</span>
             </p>
         </div>
@@ -2158,12 +2158,12 @@ function exportTournamentCSV() {
 </body>
 </html>`;
 
-    showToast('Generando PDF, por favor espera... ÔÅ│');
+    showToast('Generando PDF, por favor espera... ⏳');
 
     if (window.db && window.db.socket) {
         window.db.socket.emit('export-pdf', { html: htmlContent }, (response) => {
             if (response && response.success) {
-                // Reconstruir el PDF desde base64 (evita corrupci├│n de Buffer en Socket.IO)
+                // Reconstruir el PDF desde base64 (evita corrupciión de Buffer en Socket.IO)
                 const binaryStr = atob(response.pdf);
                 const bytes = new Uint8Array(binaryStr.length);
                 for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
@@ -2176,13 +2176,13 @@ function exportTournamentCSV() {
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-                showToast('­ƒôä Reporte PDF exportado exitosamente.');
+                showToast('📄 Reporte PDF exportado exitosamente.');
             } else {
                 showToast(response?.message || 'Error al generar el PDF', true);
             }
         });
     } else {
-        showToast('No hay conexi├│n con el servidor para generar el PDF', true);
+        showToast('No hay conexiión con el servidor para generar el PDF', true);
     }
 }
 
@@ -2242,11 +2242,11 @@ function renderPodiumHTML(podium) {
             ${podium.second ? `
             <div class="podium-place">
                 <div class="podium-block second">
-                    <div class="podium-avatar" style="border-color:#9CA3AF; font-size:1.8rem;">2┬║</div>
+                    <div class="podium-avatar" style="border-color:#9CA3AF; font-size:1.8rem;">2°</div>
                     <div class="podium-name">${podium.second.name}</div>
                     <div class="podium-score">${podium.second.score.toFixed(2)}</div>
                 </div>
-                <div style="font-size:1.5rem; font-weight:900; color:#6B7280; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">2┬║ PLATA</div>
+                <div style="font-size:1.5rem; font-weight:900; color:#6B7280; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">2° PLATA</div>
             </div>
             ` : ''}
 
@@ -2254,22 +2254,22 @@ function renderPodiumHTML(podium) {
             <div class="podium-place">
                 <div class="podium-block first">
                     <div class="podium-crown">­ƒææ</div>
-                    <div class="podium-avatar" style="border-color:#F59E0B; font-size:1.8rem; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);">1┬║</div>
+                    <div class="podium-avatar" style="border-color:#F59E0B; font-size:1.8rem; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);">1°</div>
                     <div class="podium-name">${podium.first.name}</div>
                     <div class="podium-score">${podium.first.score.toFixed(2)}</div>
                 </div>
-                <div style="font-size:1.5rem; font-weight:900; color:#D97706; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">1┬║ ORO</div>
+                <div style="font-size:1.5rem; font-weight:900; color:#D97706; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">1° ORO</div>
             </div>
             ` : ''}
 
             ${podium.third ? `
             <div class="podium-place">
                 <div class="podium-block third">
-                    <div class="podium-avatar" style="border-color:#FB923C; font-size:1.8rem;">3┬║</div>
+                    <div class="podium-avatar" style="border-color:#FB923C; font-size:1.8rem;">3°</div>
                     <div class="podium-name">${podium.third.name}</div>
                     <div class="podium-score">${podium.third.score.toFixed(2)}</div>
                 </div>
-                <div style="font-size:1.5rem; font-weight:900; color:#C2410C; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">3┬║ BRONCE</div>
+                <div style="font-size:1.5rem; font-weight:900; color:#C2410C; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">3° BRONCE</div>
             </div>
             ` : ''}
         </div>
@@ -2293,7 +2293,7 @@ function launchConfetti() {
         container.appendChild(confetti);
     }
 
-    // Ocultar despu├®s de 4 segundos
+    // Ocultar después de 4 segundos
     setTimeout(() => {
         container.style.display = 'none';
         container.innerHTML = '';
@@ -2303,7 +2303,7 @@ function launchConfetti() {
 // Boot up
 document.addEventListener('DOMContentLoaded', init);
 
-// Service Worker desactivado para evitar conflictos de cach├®
+// Service Worker desactivado para evitar conflictos de caché
 /*
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -2314,10 +2314,10 @@ if ('serviceWorker' in navigator) {
 
 // Online/Offline detection
 window.addEventListener('online', () => {
-    showToast('Conexi├│n restaurada', false);
+    showToast('Conexiión restaurada', false);
     document.body.classList.remove('is-offline');
 });
 window.addEventListener('offline', () => {
-    showToast('ÔÜá´©Å CONEXI├ôN PERDIDA. Revisa tu internet.', true);
+    showToast('⚠️ CONEXI├ôN PERDIDA. Revisa tu internet.', true);
     document.body.classList.add('is-offline');
 });
