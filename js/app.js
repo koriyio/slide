@@ -1,9 +1,8 @@
 /* =========================================
    APP CONTROLLER
-   Handles UI interations and rendering
-========================================= */
+   Handles UI interactions and rendering
+======================================== */
 
-// DOM Elements
 const ui = {
     navItems: document.querySelectorAll('.nav-item'),
     views: document.querySelectorAll('.view'),
@@ -69,7 +68,10 @@ const ui = {
 
     // User Profile
     currentUserRole: document.getElementById('current-user-role'),
-    btnLogout: document.getElementById('btn-logout')
+    btnLogout: document.getElementById('btn-logout'),
+
+    // Role Info
+    roleStatus: document.querySelectorAll('.role-status')
 };
 
 let currentBattleId = null;
@@ -80,13 +82,15 @@ function init() {
     setupLogin();
     setupNavigation();
     setupEventListeners();
-    // Forzar que el navegador no restaure opciones cacheadas al reiniciar la app (F5)
-    ui.battlesCategorySelect.value = '';
-    ui.bracketsCategorySelect.value = '';
+    
+    // Reset filters
+    if (ui.battlesCategorySelect) ui.battlesCategorySelect.value = '';
+    if (ui.bracketsCategorySelect) ui.bracketsCategorySelect.value = '';
+    
     populateCategories();
     populateTricks();
     setupTrickSearch();
-    // Render initially if data is loaded, otherwise storage.js calls these later
+
     if (window.db && window.db.localData && window.db.localData.categories) {
         renderDashboard();
         renderSkaters();
@@ -100,7 +104,6 @@ function setupAuth() {
             const u = ui.authUsername.value.trim();
             const p = ui.authPassword.value.trim();
 
-            // Determinar rol basado en el nombre de usuario
             let targetRole = null;
             const userLower = u.toLowerCase();
 
@@ -113,7 +116,6 @@ function setupAuth() {
             }
 
             if (targetRole) {
-                // Iniciar sesiión con credenciales completas
                 window.db.login(targetRole, u, p, (success, msg) => {
                     if (success) {
                         ui.authScreen.style.display = 'none';
@@ -138,8 +140,6 @@ function setupLogin() {
     ui.roleBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const role = btn.dataset.role;
-
-            // Credenciales por defecto según el rol
             const defaultCredentials = {
                 'Juez 1': { user: 'Slide', pass: 'slide2026' },
                 'Juez 2': { user: 'juez2', pass: 'slide' },
@@ -179,13 +179,13 @@ function setupLogin() {
 
     if (ui.btnLogout) {
         ui.btnLogout.addEventListener('click', () => {
-            if (confirm('¿Seguro que deseas salir?')) {
+            if (confirm('\u00BFSeguro que deseas salir?')) {
                 if (window.db && window.db.socket) {
                     window.db.socket.emit('logout');
-                    // Give server a tiny bit of time to process the logout event before reloading
+                    // Ensure reload even if socket fails or takes too long
                     setTimeout(() => {
                         location.reload();
-                    }, 200);
+                    }, 100);
                 } else {
                     location.reload();
                 }
@@ -248,7 +248,7 @@ function setupNavigation() {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             window.navigateTo(item.dataset.view);
-            // Cerrar sidebar en m├│viles tras navegar
+            // Cerrar sidebar en m\u00f3viles tras navegar
             if (window.innerWidth <= 768 && sidebar) {
                 sidebar.classList.remove('show');
             }
@@ -261,7 +261,7 @@ function setupNavigation() {
         if (target) {
             e.preventDefault();
             window.navigateTo(target.dataset.navigate);
-            // Cerrar sidebar en m├│viles tras navegar
+            // Cerrar sidebar en m\u00f3viles tras navegar
             if (window.innerWidth <= 768 && sidebar) {
                 sidebar.classList.remove('show');
             }
@@ -315,7 +315,7 @@ function setupEventListeners() {
                 ui.formSkater.reset();
                 renderSkaters();
                 renderDashboard();
-                showToast('✓ Patinador inscrito con éxito');
+                showToast('\u2713 Patinador inscrito con \u00e9xito');
             } else {
                 showToast('Error: ' + (response?.message || 'No se pudo inscribir el patinador'), true);
             }
@@ -372,7 +372,7 @@ function setupEventListeners() {
     };
 
     ui.btnFinishBattle.onclick = () => {
-        if (!confirm('¿Estás seguro de finalizar esta batalla? Esto calcular├í los ganadores y bloquear├í la ediciión.')) return;
+        if (!confirm('\u00bfEst\u00e1s seguro de finalizar esta batalla? Esto calcular\u00e1 los ganadores y bloquear\u00e1 la edici\u00f3n.')) return;
 
         window.db.finishBattle(currentBattleId, (res) => {
             if (res && res.success) {
@@ -388,7 +388,7 @@ function setupEventListeners() {
                 if (battle && battle.phase === 'Final') {
                     setTimeout(() => {
                         launchConfetti();
-                        showToast('┬íBatalla finalizada! ­ƒÄë ┬íTenemos un ganador!');
+                        showToast('\u00a1Batalla finalizada! \ud83c\udf89 \u00a1Tenemos un ganador!');
                     }, 500);
                 } else {
                     showToast('Batalla finalizada, ganadores calculados');
@@ -476,13 +476,13 @@ function setupEventListeners() {
     };
 
     ui.btnResetDB.onclick = () => {
-        const password = prompt('⚠️ PELIGRO: Esto ELIMINAR├ü TODOS los datos de la competencia.\nPara confirmar, escribe "ELIMINAR":');
+        const password = prompt('\u26a0\ufe0f PELIGRO: Esto ELIMINAR\u00c1 TODOS los datos de la competencia.\nPara confirmar, escribe "ELIMINAR":');
         if (password === 'ELIMINAR') {
             window.db.resetDB();
             showToast('Base de datos eliminada. Recargando...', true);
             setTimeout(() => location.reload(), 1500);
         } else if (password !== null) {
-            showToast('Confirmaciión incorrecta. Acciión cancelada.', true);
+            showToast('Confirmaci\u00f3n incorrecta. Acci\u00f3n cancelada.', true);
         }
     };
 
@@ -949,10 +949,10 @@ function renderBattlesByCategory(battles, allSkaters) {
                             // En la Final mostrar puestos en vez de "Eliminado"
                             const sorted = [...battle.skaters].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
                             const pos = sorted.findIndex(s => s.skaterId === bs.skaterId) + 1;
-                            const medals = ['­ƒÑç', '­ƒÑê', '­ƒÑë', '­ƒÅà'];
-                            const medal = medals[pos - 1] || '­ƒÅà';
-                            const posLabels = ['1┬░ Lugar', '2┬░ Lugar', '3┬░ Lugar', '4┬░ Lugar'];
-                            const label = posLabels[pos - 1] || `${pos}┬░ Lugar`;
+                            const medals = ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49', '\ud83c\udfc5'];
+                            const medal = medals[pos - 1] || '\ud83c\udfc5';
+                            const posLabels = ['1\u00b0 Lugar', '2\u00b0 Lugar', '3\u00b0 Lugar', '4\u00b0 Lugar'];
+                            const label = posLabels[pos - 1] || `${pos}\u00b0 Lugar`;
                             statusHtml = `<span style="font-size:0.75rem; font-weight:700; color:var(--primary);">${medal} ${label}</span>`;
                         } else {
                             statusHtml = '<span style="font-size:0.7rem; color:var(--text-muted);">Eliminado</span>';
@@ -1302,8 +1302,8 @@ function renderActiveBattle() {
                 const sortedSkaters = [...battle.skaters].sort((a, b) => b.totalScore - a.totalScore);
                 const position = sortedSkaters.findIndex(s => s.skaterId == bs.skaterId) + 1;
 
-                // Determinar sufijo ordinal (1°, 2°, 3°, 4°, etc.)
-                const sufijo = '°';
+                // Determinar sufijo ordinal (1ra, 2da, 3ra, 4ta, etc. o simplemente .)
+                const sufijo = '.';
 
                 // Colores diferentes para top 3
                 let colorBg, colorText, borderStyle;
@@ -1537,27 +1537,31 @@ function renderBrackets() {
                 ? [...battle.skaters].sort((a, b) => b.totalScore - a.totalScore)
                 : battle.skaters;
 
+            const isFinal = battle.phase === 'Final';
+
             sortedSkaters.forEach((bs, idx) => {
                 const sInfo = db.skaters.find(s => s.id == bs.skaterId);
                 const isQualified = bs.qualified === true;
+                
+                const rankLabel = isFinal
+                    ? (idx === 0 ? '&#129351; ORO' : idx === 1 ? '&#129352; PLATA' : idx === 2 ? '&#129353; BRONCE' : idx === 3 ? '4.' : '')
+                    : '';
+
+                const positionLabel = isFinal
+                    ? `<span style="font-size:0.75rem; color:var(--text-muted); font-weight:bold;">Posición: ${idx + 1}.</span>`
+                    : '';
+
                 const mark = battle.status === 'completed' && isQualified
                     ? '<i class="ph-fill ph-check-circle" style="color:#10B981;" title="Clasificado"></i>'
                     : '';
                 const bg = isQualified ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.05)';
-                const positionBadge = battle.status === 'completed'
-                    ? (idx === 0 ? '­ƒÑç' : idx === 1 ? '­ƒÑê' : idx === 2 ? '­ƒÑë' : idx === 3 ? '4°' : '')
-                    : '';
-
-                const finalMark = battle.phase === 'Final' && battle.status === 'completed'
-                    ? `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">Posiciión: ${idx + 1}°</span>`
-                    : mark;
 
                 skatersHtml += `
-                    <div style="padding:0.5rem; background:${bg}; border-radius:4px; margin-bottom:0.3rem; font-size:0.85rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                    <div style="padding:0.5rem; background:${bg}; border-radius:4px; margin-bottom:0.3rem; font-size:0.85rem; display:flex; align-items:center; justify-content:between; gap:0.5rem;">
                         <div style="display:flex; align-items:center; gap:0.4rem; flex:1;">
-                            <span style="font-size:0.75rem; min-width:16px;">${positionBadge}</span>
+                            <span style="font-size:0.75rem; min-width:16px;">${rankLabel}</span>
                             <span style="flex:1;">${sInfo ? sInfo.firstName + ' ' + sInfo.lastName : 'TBD'}</span>
-                            ${finalMark}
+                            ${mark}
                         </div>
                         ${battle.status === 'completed' ? `<span style="font-weight:700; color:var(--primary); font-size:0.8rem;">${bs.totalScore.toFixed(2)}</span>` : ''}
                     </div>
@@ -1592,7 +1596,6 @@ window.triggerNextPhase = (catId) => {
         }
     }
 }
-
 window.deleteRecordedTrick = (skaterId, slotIdx) => {
     if (confirm('¿Eliminar este truco?')) {
         if (window.db.deleteTrick(currentBattleId, skaterId, slotIdx)) {
@@ -1600,11 +1603,6 @@ window.deleteRecordedTrick = (skaterId, slotIdx) => {
             showToast('Truco eliminado');
         }
     }
-}
-
-window.adjustPoints = (val) => {
-    const input = document.getElementById('judge-adjustment');
-    input.value = (parseFloat(input.value) + val).toFixed(1);
 }
 
 function exportTournamentCSV() {
@@ -1617,395 +1615,161 @@ function exportTournamentCSV() {
         const refCatId = sk.categoryId || sk.category || 'unknown';
         const cat = categories.find(c => c.id == refCatId);
         const categoryName = cat ? cat.name : refCatId;
-
         const skaterBattles = battles.filter(b => b.skaters.some(s => s.skaterId == sk.id));
 
         let finalPhase = 'Preliminar';
         let finalPhaseNum = 1;
         let totalScore = 0;
-        let finalPosition = null;
-        let isQualified = false;
-        let j1Score = 0;
-        let j2Score = 0;
-        let j3Score = 0;
+        let j1Score = 0, j2Score = 0, j3Score = 0;
 
-        const phaseMap = {
-            'Preliminar': 1, 'Heat': 1,
-            'Cuartos': 2, 'Quarter-Final': 2, 'Cuartos de Final': 2,
-            'Semifinal': 3, 'Semi-Final': 3, 'Semifinales': 3,
-            'Final': 4
-        };
+        const phaseMap = { 'Preliminar': 1, 'Heat': 1, 'Cuartos': 2, 'Semifinal': 3, 'Final': 4 };
 
         if (skaterBattles.length > 0) {
-            const lastBattle = skaterBattles.reduce((last, b) =>
+            const lastBattle = skaterBattles.reduce((last, b) => 
                 (phaseMap[b.phase] || 0) > (phaseMap[last.phase] || 0) ? b : last, skaterBattles[0]);
             const result = lastBattle.skaters.find(s => s.skaterId === sk.id);
 
-            let rawPhase = lastBattle.phase;
-            if (rawPhase === 'Heat') rawPhase = 'Preliminar';
-            if (rawPhase === 'Quarter-Final' || rawPhase === 'Cuartos de Final') rawPhase = 'Cuartos';
-            if (rawPhase === 'Semi-Final' || rawPhase === 'Semifinales') rawPhase = 'Semifinal';
-
-            finalPhase = rawPhase;
+            finalPhase = lastBattle.phase;
             finalPhaseNum = phaseMap[lastBattle.phase] || 1;
 
             if (result) {
+                totalScore = result.totalScore;
                 const judging = result.judging || {};
                 const getSumExport = (role) => {
-                    let tricks = (judging[role] || []);
-                    let validTricks = tricks.filter(t => t && !t.isFail && t.finalScore > 0);
-                    let scores = validTricks.map(t => t.finalScore);
-                    scores.sort((a, b) => b - a);
-                    const maxToCount = lastBattle.phase === 'Final' ? 4 : 3;
-                    const topScores = scores.slice(0, maxToCount);
-                    const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
-
-                    const families = new Set(validTricks.map(t => {
-                        if (!t.family) return '';
-                        const m = t.family.match(/^(F\d+)/);
-                        return m ? m[1] : '';
-                    }));
-                    const numFamilies = families.size;
-                    let m_var = 1.0;
-                    if (numFamilies === 3) m_var = 1.05;
-                    else if (numFamilies >= 4) m_var = 1.10;
-
-                    return Math.round(baseTotal * m_var * 100) / 100;
+                    let tricks = (judging[role] || []).filter(t => t && !t.isFail).map(t => t.finalScore);
+                    tricks.sort((a, b) => b - a);
+                    const top = tricks.slice(0, lastBattle.phase === 'Final' ? 4 : 3);
+                    return top.reduce((a, b) => a + b, 0);
                 };
                 j1Score = getSumExport('Juez 1');
                 j2Score = getSumExport('Juez 2');
                 j3Score = getSumExport('Juez 3');
-                totalScore = result.totalScore;
-                isQualified = result.qualified || false;
             }
         }
 
-        return {
-            ...sk,
-            categoryName,
-            finalPhase,
-            finalPhaseNum,
-            totalScore,
-            isQualified,
-            j1Score,
-            j2Score,
-            j3Score
-        };
+        return { ...sk, categoryName, finalPhase, finalPhaseNum, totalScore, j1Score, j2Score, j3Score };
     });
 
     const byCategory = {};
     skaterResults.forEach(sk => {
-        const refCatId = sk.categoryId || sk.category || 'unknown';
-        if (!byCategory[refCatId]) {
-            byCategory[refCatId] = [];
-        }
-        byCategory[refCatId].push(sk);
+        if (!byCategory[sk.categoryName]) byCategory[sk.categoryName] = [];
+        byCategory[sk.categoryName].push(sk);
     });
 
     Object.values(byCategory).forEach(catSkaters => {
         catSkaters.sort((a, b) => {
             if (b.finalPhaseNum !== a.finalPhaseNum) return b.finalPhaseNum - a.finalPhaseNum;
-            if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-            return (a.seedNumber || 999) - (b.seedNumber || 999);
+            return b.totalScore - a.totalScore;
         });
-        catSkaters.forEach((sk, idx) => {
-            sk.finalPosition = idx + 1;
-        });
+        catSkaters.forEach((sk, idx) => sk.finalPosition = idx + 1);
     });
 
-    const sortedSkaters = [...skaterResults].sort((a, b) => {
+    const sortedSkaters = Object.values(byCategory).flat().sort((a, b) => {
         if (a.categoryName !== b.categoryName) return a.categoryName.localeCompare(b.categoryName);
-        if (b.finalPhaseNum !== a.finalPhaseNum) return b.finalPhaseNum - a.finalPhaseNum;
-        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-        if (a.finalPosition && b.finalPosition) return a.finalPosition - b.finalPosition;
-        if (a.finalPosition && !b.finalPosition) return -1;
-        if (!a.finalPosition && b.finalPosition) return 1;
-        return (a.seedNumber || 999) - (b.seedNumber || 999);
+        return a.finalPosition - b.finalPosition;
     });
 
-    const currentDate = new Date().toLocaleDateString('es-CL', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    const currentDate = new Date().toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' });
+    const logoUrl = `${window.location.origin}/img/logo.png`;
 
-    const baseUrl = window.location.href.split('index.html')[0].replace(/\/$/, '');
-    const logoUrl = `${baseUrl}/img/logo.png`;
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reporte Oficial - LIGA CHILENA</title>
+    <style>
+        @page { size: A4 landscape; margin: 15mm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; color: #333; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #0039A6; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { font-size: 20px; color: #0039A6; margin: 0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #0039A6; color: white; padding: 8px; font-size: 9px; }
+        td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+        .cat-row { background: #f0f4ff; font-weight: bold; text-align: left; }
+        .pos { font-weight: bold; width: 30px; }
+        .name { text-align: left; width: 200px; }
+        @media print { .no-print { display: none; } }
+    </style></head><body>
+    <div class="header">
+        <img src="${logoUrl}" style="height:60px;">
+        <div style="text-align:right;">
+            <h1>LIGA CHILENA DE INLINE FREESTYLE</h1>
+            <p>Reporte Oficial de Resultados - 2026</p>
+            <p>Generado: ${currentDate}</p>
+        </div>
+    </div>
+    <table><thead><tr><th>Pos</th><th>Categor&iacute;a</th><th>WSSA</th><th>Patinador</th><th>Fase</th><th>Juez 1</th><th>Juez 2</th><th>Juez 3</th><th>Total</th></tr></thead><tbody>`;
 
-    // Build HTML using HTML entities for special chars to avoid encoding issues
-    let htmlContent = '';
-    
-    htmlContent += '<!DOCTYPE html>\n<html lang="es">\n<head>\n';
-    htmlContent += '    <meta charset="UTF-8">\n';
-    htmlContent += '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n';
-    htmlContent += '    <title>Resultados - Liga Chilena de Inline Freestyle 2026</title>\n';
-    htmlContent += '    <style>\n';
-    htmlContent += '        @page { size: A4 landscape; margin: 15mm; }\n';
-    htmlContent += "        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');\n";
-    htmlContent += '        body { font-family: \'Inter\', sans-serif; background: #fff; color: #222; font-size: 11px; }\n';
-    htmlContent += '        .header { text-align: center; background: linear-gradient(135deg, #0039A6 0%, #FFFFFF 50%, #D52B1E 100%); padding: 25px; border-radius: 8px; margin-bottom: 20px; position: relative; }\n';
-    htmlContent += '        .header::before { content: \'\'; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(0,57,166,0.8) 0%, rgba(255,255,255,0.6) 50%, rgba(213,43,30,0.8) 100%); z-index: 1; }\n';
-    htmlContent += '        .header-content { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; min-height: 100px; }\n';
-    htmlContent += '        .header-text { text-align: center; }\n';
-    htmlContent += '        .header h1 { margin: 0; font-size: 26px; text-transform: uppercase; letter-spacing: 3px; color: #000; }\n';
-    htmlContent += '        .header p { margin: 8px 0 0 0; font-size: 13px; font-weight: 600; color: #111; }\n';
-    htmlContent += '        .league-badge { display: inline-block; background: #0039A6; color: #fff; padding: 8px 20px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; }\n';
-    htmlContent += '        .league-logo { height: 90px; object-fit: contain; position: absolute; left: -15px; top: 50%; transform: translateY(-50%); }\n';
-    htmlContent += '        .date { text-align: right; font-size: 10px; color: #666; margin-bottom: 10px; font-weight: 600; }\n';
-    htmlContent += '        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }\n';
-    htmlContent += '        th { background: linear-gradient(135deg, #0039A6 0%, #1e40af 100%); color: white; padding: 10px 8px; text-align: center; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; border: 1px solid #1e3a8a; }\n';
-    htmlContent += '        td { padding: 8px; border: 1px solid #e2e8f0; text-align: center; }\n';
-    htmlContent += '        tr:nth-child(even) { background: linear-gradient(90deg, rgba(0,57,166,0.03) 0%, rgba(213,43,30,0.03) 100%); }\n';
-    htmlContent += '        .category-header { background: #0039A6 !important; color: white !important; font-weight: 700; text-align: left; padding-left: 15px; }\n';
-    htmlContent += '        .skater-name { text-align: left; font-weight: 600; padding-left: 15px; }\n';
-    htmlContent += '        .score { font-weight: 700; color: #D52B1E; }\n';
-    htmlContent += '        .score-high { color: #0039A6; font-size: 12px; }\n';
-    htmlContent += '        .score-medium { color: #D52B1E; }\n';
-    htmlContent += '        .score-low { color: #666; }\n';
-    htmlContent += '        .position { font-weight: 700; padding: 3px 8px; border-radius: 12px; display: inline-block; min-width: 30px; }\n';
-    htmlContent += '        .pos-1 { background: #FFD700; color: #000; }\n';
-    htmlContent += '        .pos-2 { background: #C0C0C0; color: #000; }\n';
-    htmlContent += '        .pos-3 { background: #CD7F32; color: #fff; }\n';
-    htmlContent += '        .pos-default { background: #e2e8f0; color: #64748B; }\n';
-    htmlContent += '        .footer { text-align: center; font-size: 9px; color: #666; margin-top: 20px; padding-top: 10px; border-top: 2px solid #0039A6; background: linear-gradient(90deg, rgba(0,57,166,0.05) 0%, rgba(213,43,30,0.05) 100%); padding: 15px; border-radius: 8px; }\n';
-    htmlContent += '        .footer-strong { font-weight: 700; color: #0039A6; }\n';
-    htmlContent += '        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }\n';
-    htmlContent += '    </style>\n</head>\n<body>\n';
-    
-    // Header section - using HTML entities for special characters
-    htmlContent += '    <div class="header">\n';
-    htmlContent += '        <div class="header-content">\n';
-    htmlContent += '            <img src="' + logoUrl + '" class="league-logo" alt="Logo Liga Chilena">\n';
-    htmlContent += '            <div class="header-text">\n';
-    htmlContent += '                <h1>LIGA CHILENA DE INLINE FREESTYLE</h1>\n';
-    htmlContent += '                <p>Campeonato Nacional 2026 - Reporte Oficial de Resultados</p>\n';
-    htmlContent += '                <div class="league-badge">TEMPORADA 2026</div>\n';
-    htmlContent += '            </div>\n';
-    htmlContent += '        </div>\n';
-    htmlContent += '    </div>\n';
-    htmlContent += '    <div class="date">Generado: ' + currentDate + '</div>\n\n';
-    
-    // Table header - using &Iacute; for &Iacute; to avoid encoding issues
-    htmlContent += '    <table>\n';
-    htmlContent += '        <thead>\n';
-    htmlContent += '            <tr>\n';
-    htmlContent += '                <th style="width: 50px;">#</th>\n';
-    htmlContent += '                <th style="width: 80px;">CATEGOR&Iacute;A</th>\n';
-    htmlContent += '                <th style="width: 120px;">ID/WSSA</th>\n';
-    htmlContent += '                <th style="width: 200px;">PATINADOR</th>\n';
-    htmlContent += '                <th style="width: 50px;">SEED</th>\n';
-    htmlContent += '                <th style="width: 80px;">FASE</th>\n';
-    htmlContent += '                <th style="width: 70px;">JUEZ 1</th>\n';
-    htmlContent += '                <th style="width: 70px;">JUEZ 2</th>\n';
-    htmlContent += '                <th style="width: 70px;">JUEZ 3</th>\n';
-    htmlContent += '                <th style="width: 80px;">TOTAL</th>\n';
-    htmlContent += '                <th style="width: 80px;">ESTADO</th>\n';
-    htmlContent += '            </tr>\n';
-    htmlContent += '        </thead>\n';
-    htmlContent += '        <tbody>\n';
-
-    let currentCategory = '';
-    let categoryPosition = 0;
-
+    let currentCat = '';
     sortedSkaters.forEach(sk => {
-        const categoryName = sk.categoryName;
-
-        if (categoryName !== currentCategory) {
-            currentCategory = categoryName;
-            categoryPosition = 1;
-            htmlContent += '            <tr>\n';
-            htmlContent += '                <td colspan="11" class="category-header"><strong>' + categoryName + '</strong></td>\n';
-            htmlContent += '            </tr>\n';
-        } else {
-            categoryPosition++;
+        if (sk.categoryName !== currentCat) {
+            currentCat = sk.categoryName;
+            html += `<tr class="cat-row"><td colspan="9">${currentCat}</td></tr>`;
         }
-
-        let maxPhase = sk.finalPhase === 'Final' ? 'Final' :
-            (sk.finalPhase === 'Semifinal' || sk.finalPhase === 'Semi-Final' || sk.finalPhase === 'Semifinales') ? 'Semifinal' :
-                (sk.finalPhase === 'Cuartos' || sk.finalPhase === 'Quarter-Final' || sk.finalPhase === 'Cuartos de Final') ? 'Cuartos' : 'Preliminar';
-
-        let j1Score = sk.j1Score > 0 ? sk.j1Score : '-';
-        let j2Score = sk.j2Score > 0 ? sk.j2Score : '-';
-        let j3Score = sk.j3Score > 0 ? sk.j3Score : '-';
-        let totalScore = sk.totalScore;
-
-        let scoreClass = 'score-medium';
-        if (totalScore >= 34) scoreClass = 'score-high';
-        else if (totalScore < 17) scoreClass = 'score-low';
-
-        const fullName = (sk.firstName + ' ' + sk.lastName).toUpperCase();
-        const wssa = sk.externalId || '-';
-        const seed = sk.seedNumber > 0 ? '#' + sk.seedNumber : '-';
-
-        let statusHtml = '-';
-        if (categoryPosition === 1 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-1">1&deg;</span>';
-        } else if (categoryPosition === 2 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-2">2&deg;</span>';
-        } else if (categoryPosition === 3 && sk.finalPhaseNum === 4) {
-            statusHtml = '<span class="position pos-3">3&deg;</span>';
-        } else {
-            statusHtml = '<span class="position pos-default" style="background: #e2e8f0; color: #64748B;">' + categoryPosition + '&deg;</span>';
-        }
-
-        htmlContent += '            <tr>\n';
-        htmlContent += '                <td>' + categoryPosition + '</td>\n';
-        htmlContent += '                <td>' + categoryName.split(' ')[0] + '</td>\n';
-        htmlContent += '                <td style="font-family: monospace; font-size: 10px;">' + wssa + '</td>\n';
-        htmlContent += '                <td class="skater-name">' + fullName + '</td>\n';
-        htmlContent += '                <td>' + seed + '</td>\n';
-        htmlContent += '                <td>' + maxPhase + '</td>\n';
-        htmlContent += '                <td class="' + (j1Score !== '-' ? 'score-medium' : '') + '">' + (j1Score !== '-' ? j1Score.toFixed(1) : '-') + '</td>\n';
-        htmlContent += '                <td class="' + (j2Score !== '-' ? 'score-medium' : '') + '">' + (j2Score !== '-' ? j2Score.toFixed(1) : '-') + '</td>\n';
-        htmlContent += '                <td class="' + (j3Score !== '-' ? 'score-medium' : '') + '">' + (j3Score !== '-' ? j3Score.toFixed(1) : '-') + '</td>\n';
-        htmlContent += '                <td class="score ' + scoreClass + '">' + (totalScore > 0 ? totalScore.toFixed(2) : '-') + '</td>\n';
-        htmlContent += '                <td>' + statusHtml + '</td>\n';
-        htmlContent += '            </tr>\n';
+        html += `<tr>
+            <td class="pos">${sk.finalPosition}.</td>
+            <td>${sk.categoryName.split(' ')[0]}</td>
+            <td>${sk.externalId || '-'}</td>
+            <td class="name">${sk.firstName} ${sk.lastName}</td>
+            <td>${sk.finalPhase}</td>
+            <td>${sk.j1Score.toFixed(1)}</td>
+            <td>${sk.j2Score.toFixed(1)}</td>
+            <td>${sk.j3Score.toFixed(1)}</td>
+            <td style="font-weight:bold; color:#d32f2f;">${sk.totalScore.toFixed(2)}</td>
+        </tr>`;
     });
 
-    htmlContent += '        </tbody>\n';
-    htmlContent += '    </table>\n\n';
-    
-    htmlContent += '    <div class="footer">\n';
-    htmlContent += '        <p class="footer-strong">LIGA CHILENA DE INLINE FREESTYLE - TEMPORADA 2026</p>\n';
-    htmlContent += '        <p>Este documento es un reporte oficial de resultados. Para consultas, contactar a la organizaci&oacute;n.</p>\n';
-    htmlContent += '        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #0039A6;">\n';
-    htmlContent += '            <p style="font-size: 10px; color: #666;">\n';
-    htmlContent += '                Desarrollado por <strong>Rodrigo Aburto Pereira</strong> - T&eacute;cnico de Nivel Superior en Inform&aacute;tica<br>\n';
-    htmlContent += '                <span style="color: #D52B1E; font-weight: 700;">VERSI&Oacute;N 1.0</span>\n';
-    htmlContent += '            </p>\n';
-    htmlContent += '        </div>\n';
-    htmlContent += '        <img src="' + logoUrl + '" style="height: 60px; margin-top: 15px;" alt="Logo Liga Chilena">\n';
-    htmlContent += '    </div>\n';
-    htmlContent += '</body>\n';
-    htmlContent += '</html>';
+    html += `</tbody></table>
+    <div style="margin-top:20px; text-align:center; font-size:9px; color:#666; border-top:1px solid #ccc; padding-top:10px;">
+        <p>Documento Oficial - Liga Chilena de Inline Freestyle (L-CIF)</p>
+    </div>
+    <script>window.onload = () => { setTimeout(() => { window.print(); }, 500); };</script>
+    </body></html>`;
 
-    showToast('Generando PDF, por favor espera...');
-
-    if (window.db && window.db.socket) {
-        window.db.socket.emit('export-pdf', { html: htmlContent }, (response) => {
-            if (response && response.success) {
-                const binaryStr = atob(response.pdf);
-                const bytes = new Uint8Array(binaryStr.length);
-                for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-                const blob = new Blob([bytes], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", 'slide_resultados_' + new Date().toISOString().split('T')[0] + '.pdf');
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-                showToast('Reporte PDF exportado exitosamente.');
-            } else {
-                showToast(response?.message || 'Error al generar el PDF', true);
-            }
-        });
-    } else {
-        showToast('No hay conexi&oacute;n con el servidor para generar el PDF', true);
-    }
+    const printWin = window.open('', '_blank');
+    printWin.document.write(html);
+    printWin.document.close();
 }
 
-
-// Toast
-function showToast(msg, isError = false) {
-    let t = document.createElement('div');
-    t.className = isError ? 'toast error' : 'toast';
-    t.innerHTML = `<i class="ph ph-${isError ? 'warning-circle' : 'check-circle'}" style="color:${isError ? 'var(--danger)' : 'var(--accent)'}; font-size:1.2rem; vertical-align:middle; margin-right:0.4rem;"></i> ${msg}`;
-    document.getElementById('toast-container').appendChild(t);
-    setTimeout(() => {
-        t.style.opacity = '0';
-        setTimeout(() => t.remove(), 300);
-    }, 3000);
-}
-
-// =========================================
-// PODIUM VISUAL & CONFETTI (Propuesta 6)
-// =========================================
 function showPodium(battleId) {
     const db = window.db.getDB();
-    const battle = db.battles.find(b => b.id === battleId);
+    const battle = db.battles.find(b => b.id == battleId);
     if (!battle || battle.status !== 'completed') return null;
 
-    // Ordenar por puntaje
     const sorted = [...battle.skaters].sort((a, b) => b.totalScore - a.totalScore);
-    const skaters = db.skaters;
-
-    // Obtener top 3
-    const first = sorted[0] ? skaters.find(s => s.id === sorted[0].skaterId) : null;
-    const second = sorted[1] ? skaters.find(s => s.id === sorted[1].skaterId) : null;
-    const third = sorted[2] ? skaters.find(s => s.id === sorted[2].skaterId) : null;
-
-    return {
-        first: first ? {
-            name: (first.firstName + ' ' + first.lastName).toUpperCase(),
-            score: sorted[0].totalScore,
-            initial: first.firstName.charAt(0).toUpperCase()
-        } : null,
-        second: second ? {
-            name: (second.firstName + ' ' + second.lastName).toUpperCase(),
-            score: sorted[1].totalScore,
-            initial: second.firstName.charAt(0).toUpperCase()
-        } : null,
-        third: third ? {
-            name: (third.firstName + ' ' + third.lastName).toUpperCase(),
-            score: sorted[2].totalScore,
-            initial: third.firstName.charAt(0).toUpperCase()
-        } : null
+    const podium = {
+        first: sorted[0] ? { ...sorted[0], info: db.skaters.find(s => s.id == sorted[0].skaterId) } : null,
+        second: sorted[1] ? { ...sorted[1], info: db.skaters.find(s => s.id == sorted[1].skaterId) } : null,
+        third: sorted[2] ? { ...sorted[2], info: db.skaters.find(s => s.id == sorted[2].skaterId) } : null
     };
+    return podium;
 }
 
 function renderPodiumHTML(podium) {
-    if (!podium || (!podium.first && !podium.second && !podium.third)) return '';
-
-    const html = `
-        <div class="podium-container">
-            ${podium.second ? `
-            <div class="podium-place">
-                <div class="podium-block second">
-                    <div class="podium-avatar" style="border-color:#9CA3AF; font-size:1.8rem;">2°</div>
-                    <div class="podium-name">${podium.second.name}</div>
-                    <div class="podium-score">${podium.second.score.toFixed(2)}</div>
-                </div>
-                <div style="font-size:1.5rem; font-weight:900; color:#6B7280; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">2° PLATA</div>
+    if (!podium) return '';
+    
+    const getCard = (sk, label, color, icon) => {
+        if (!sk || !sk.info) return '';
+        return `
+            <div style="flex:1; background:var(--bg-app); border:1px solid var(--border); border-radius:var(--radius-md); padding:1rem; text-align:center; position:relative; min-width:150px; border-top:4px solid ${color};">
+                <div style="font-size:2rem; margin-bottom:0.5rem; color:${color};"><i class="ph-fill ph-${icon}"></i></div>
+                <div style="font-size:0.7rem; text-transform:uppercase; font-weight:800; color:var(--text-muted); margin-bottom:0.5rem;">${label}</div>
+                <div style="font-weight:700; margin-bottom:0.2rem;">${sk.info.firstName} ${sk.info.lastName}</div>
+                <div style="font-size:1.2rem; font-weight:800; color:${color};">${sk.totalScore.toFixed(2)}</div>
             </div>
-            ` : ''}
+        `;
+    };
 
-            ${podium.first ? `
-            <div class="podium-place">
-                <div class="podium-block first">
-                    <div class="podium-crown">­ƒææ</div>
-                    <div class="podium-avatar" style="border-color:#F59E0B; font-size:1.8rem; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);">1°</div>
-                    <div class="podium-name">${podium.first.name}</div>
-                    <div class="podium-score">${podium.first.score.toFixed(2)}</div>
-                </div>
-                <div style="font-size:1.5rem; font-weight:900; color:#D97706; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">1° ORO</div>
-            </div>
-            ` : ''}
-
-            ${podium.third ? `
-            <div class="podium-place">
-                <div class="podium-block third">
-                    <div class="podium-avatar" style="border-color:#FB923C; font-size:1.8rem;">3°</div>
-                    <div class="podium-name">${podium.third.name}</div>
-                    <div class="podium-score">${podium.third.score.toFixed(2)}</div>
-                </div>
-                <div style="font-size:1.5rem; font-weight:900; color:#C2410C; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">3° BRONCE</div>
-            </div>
-            ` : ''}
+    return `
+        <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; justify-content:center; align-items:flex-end;">
+            ${getCard(podium.second, '2. PLATA', '#94a3b8', 'medal')}
+            ${getCard(podium.first, '1. ORO', '#eab308', 'crown')}
+            ${getCard(podium.third, '3. BRONCE', '#b45309', 'medal')}
         </div>
     `;
-
-    return html;
 }
 
 function launchConfetti() {
     const container = document.getElementById('confetti-container');
+    if (!container) return;
     container.style.display = 'block';
     container.innerHTML = '';
-
-    // Crear 50 confettis
     for (let i = 0; i < 50; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
@@ -2014,32 +1778,16 @@ function launchConfetti() {
         confetti.style.background = `hsl(${Math.random() * 360}, 70%, 60%)`;
         container.appendChild(confetti);
     }
-
-    // Ocultar después de 4 segundos
-    setTimeout(() => {
-        container.style.display = 'none';
-        container.innerHTML = '';
-    }, 4000);
+    setTimeout(() => { container.style.display = 'none'; }, 4000);
 }
 
-// Boot up
 document.addEventListener('DOMContentLoaded', init);
 
-// Service Worker desactivado para evitar conflictos de caché
-/*
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed', err));
-    });
-}
-*/
-
-// Online/Offline detection
 window.addEventListener('online', () => {
-    showToast('Conexiión restaurada', false);
+    showToast('Conexión restaurada', false);
     document.body.classList.remove('is-offline');
 });
 window.addEventListener('offline', () => {
-    showToast('⚠️ CONEXI├ôN PERDIDA. Revisa tu internet.', true);
+    showToast('⚠️ CONEXI&Oacute;N PERDIDA. Revisa tu internet.', true);
     document.body.classList.add('is-offline');
 });

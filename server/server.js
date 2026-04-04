@@ -266,32 +266,6 @@ io.on('connection', async (socket) => {
         await broadcastUpdate();
     });
 
-    // --- PDF Export ---
-    socket.on('export-pdf', async (data, callback) => {
-        if (!requireAuth('Juez 1', 'exportar PDF')) return callback({ success: false, message: 'No autorizado' });
-
-        try {
-            const htmlContent = data.html;
-            const options = { format: 'A4', margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' } };
-            const file = { content: htmlContent };
-
-            console.log(`[AUDIT] Generando PDF solicitado por ${currentRole}...`);
-
-            pdf.generatePdf(file, options)
-                .then(pdfBuffer => {
-                    callback({ success: true, pdf: pdfBuffer.toString('base64') });
-                    console.log(`[AUDIT] PDF generado exitosamente.`);
-                })
-                .catch(err => {
-                    console.error('[AUDIT] Error generado PDF:', err.message);
-                    callback({ success: false, message: 'Error interno al generar PDF' });
-                });
-        } catch (e) {
-            console.error('[AUDIT] Excepcion en export-pdf:', e.message);
-            callback({ success: false, message: 'Error critico en la generacion de PDF' });
-        }
-    });
-
     // --- Restart ---
     socket.on('restart-server', async () => {
         if (!requireAuth('Juez 1', 'reiniciar servidor')) return;
