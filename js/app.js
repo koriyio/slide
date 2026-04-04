@@ -1674,50 +1674,140 @@ function exportTournamentCSV() {
 
     let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reporte Oficial - LIGA CHILENA</title>
     <style>
-        @page { size: A4 landscape; margin: 15mm; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; color: #333; }
-        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #0039A6; padding-bottom: 10px; margin-bottom: 20px; }
-        .header h1 { font-size: 20px; color: #0039A6; margin: 0; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #0039A6; color: white; padding: 8px; font-size: 9px; }
-        td { border: 1px solid #ddd; padding: 6px; text-align: center; }
-        .cat-row { background: #f0f4ff; font-weight: bold; text-align: left; }
-        .pos { font-weight: bold; width: 30px; }
-        .name { text-align: left; width: 200px; }
-        @media print { .no-print { display: none; } }
+        @page { size: A4 landscape; margin: 10mm; }
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 10px; color: #334155; margin: 0; padding: 0; background: #fff; }
+        .page-container { padding: 40px; }
+        
+        /* Banner Header */
+        .official-header {
+            background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 40%, #ef4444 100%);
+            border-radius: 12px;
+            padding: 30px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header-logo { height: 90px; position: absolute; left: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+        .header-text { text-align: center; }
+        .header-text h1 { font-size: 28px; margin: 0 0 5px 0; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; }
+        .header-text p { font-size: 14px; margin: 0; font-weight: 600; opacity: 0.95; }
+        .season-pill {
+            background: #1e3a8a;
+            color: white;
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 800;
+            display: inline-block;
+            margin-top: 12px;
+            text-transform: uppercase;
+        }
+
+        .meta-info { text-align: right; font-size: 11px; color: #64748b; margin-bottom: 10px; font-weight: 600; }
+
+        /* Table Design */
+        table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+        th { background: #1e3a8a; color: white; padding: 12px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.1); }
+        th:last-child { border-right: none; }
+        
+        .cat-row { background: #1e40af; color: white; font-weight: 700; padding: 10px 15px; font-size: 12px; text-align: left; }
+        
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; text-align: center; font-size: 10px; font-weight: 600; }
+        td:last-child { border-right: none; }
+        tr:nth-child(even) td { background: #f8fafc; }
+        tr:hover td { background: #f1f5f9; }
+
+        .name-cell { text-align: left; font-weight: 700; text-transform: uppercase; color: #1e293b; padding-left: 15px; border-left: 3px solid transparent; }
+        tr:hover .name-cell { border-left-color: #3b82f6; }
+
+        .score-val { color: #dc2626; font-weight: 700; }
+        .total-val { font-weight: 800; font-size: 11px; color: #1e293b; }
+
+        /* Badge Status */
+        .status-badge {
+            display: inline-block;
+            width: 55px;
+            padding: 4px 0;
+            border-radius: 15px;
+            font-weight: 800;
+            font-size: 9px;
+            color: white;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+        }
+        .pos-1 { background: #fbbf24; color: #000; text-shadow: none; } /* Gold */
+        .pos-2 { background: #94a3b8; } /* Silver */
+        .pos-3 { background: #d97706; } /* Bronze */
+        .pos-other { background: #1e40af; }
+
+        @media print {
+            .no-print { display: none; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .official-header { -webkit-print-color-adjust: exact; }
+        }
     </style></head><body>
-    <div class="header">
-        <img src="${logoUrl}" style="height:60px;">
-        <div style="text-align:right;">
-            <h1>LIGA CHILENA DE INLINE FREESTYLE</h1>
-            <p>Reporte Oficial de Resultados - 2026</p>
-            <p>Generado: ${currentDate}</p>
+    <div class="page-container">
+        <div class="meta-info">Generado: ${currentDate}</div>
+        
+        <div class="official-header">
+            <img src="${logoUrl}" class="header-logo">
+            <div class="header-text">
+                <h1>LIGA CHILENA DE INLINE FREESTYLE</h1>
+                <p>Campeonato Nacional 2026 - Reporte Oficial de Resultados</p>
+                <div class="season-pill">TEMPORADA 2026</div>
+            </div>
         </div>
-    </div>
-    <table><thead><tr><th>Pos</th><th>Categor&iacute;a</th><th>WSSA</th><th>Patinador</th><th>Fase</th><th>Juez 1</th><th>Juez 2</th><th>Juez 3</th><th>Total</th></tr></thead><tbody>`;
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 30px;">#</th>
+                    <th>Categor&iacute;a</th>
+                    <th>ID/WSSA</th>
+                    <th>Patinador</th>
+                    <th style="width: 50px;">Seed</th>
+                    <th>Fase</th>
+                    <th>Juez 1</th>
+                    <th>Juez 2</th>
+                    <th>Juez 3</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>`;
 
     let currentCat = '';
     sortedSkaters.forEach(sk => {
         if (sk.categoryName !== currentCat) {
             currentCat = sk.categoryName;
-            html += `<tr class="cat-row"><td colspan="9">${currentCat}</td></tr>`;
+            html += `<tr class="cat-row"><td colspan="11">${currentCat}</td></tr>`;
         }
+        
+        const posClass = sk.finalPosition === 1 ? 'pos-1' : sk.finalPosition === 2 ? 'pos-2' : sk.finalPosition === 3 ? 'pos-3' : 'pos-other';
+        const posLabel = `${sk.finalPosition}\u00b0`;
+
         html += `<tr>
-            <td class="pos">${sk.finalPosition}.</td>
-            <td>${sk.categoryName.split(' ')[0]}</td>
-            <td>${sk.externalId || '-'}</td>
-            <td class="name">${sk.firstName} ${sk.lastName}</td>
+            <td style="color:#64748b;">${sk.finalPosition}</td>
+            <td style="color:#64748b; font-size:9px;">${sk.categoryName.split(' ')[0]}</td>
+            <td style="font-family: monospace; font-size: 9px; color:#475569;">${sk.externalId || '-'}</td>
+            <td class="name-cell">${sk.firstName} ${sk.lastName}</td>
+            <td style="color:#64748b;">#${sk.seed || '-'}</td>
             <td>${sk.finalPhase}</td>
-            <td>${sk.j1Score.toFixed(1)}</td>
-            <td>${sk.j2Score.toFixed(1)}</td>
-            <td>${sk.j3Score.toFixed(1)}</td>
-            <td style="font-weight:bold; color:#d32f2f;">${sk.totalScore.toFixed(2)}</td>
+            <td class="score-val">${sk.j1Score > 0 ? sk.j1Score.toFixed(1) : '-'}</td>
+            <td class="score-val">${sk.j2Score > 0 ? sk.j2Score.toFixed(1) : '-'}</td>
+            <td class="score-val">${sk.j3Score > 0 ? sk.j3Score.toFixed(1) : '-'}</td>
+            <td class="total-val">${sk.totalScore.toFixed(2)}</td>
+            <td><div class="status-badge ${posClass}">${posLabel}</div></td>
         </tr>`;
     });
 
     html += `</tbody></table>
-    <div style="margin-top:20px; text-align:center; font-size:9px; color:#666; border-top:1px solid #ccc; padding-top:10px;">
-        <p>Documento Oficial - Liga Chilena de Inline Freestyle (L-CIF)</p>
+        <div style="margin-top:25px; text-align:center; font-size:9px; color:#94a3b8; font-weight:600; border-top:1px solid #e2e8f0; padding-top:15px;">
+            Documento Oficial Auditado - Federaci&oacute;n de Patinaje de Chile | Comit&eacute; de Inline Freestyle
+        </div>
     </div>
     <script>window.onload = () => { setTimeout(() => { window.print(); }, 500); };</script>
     </body></html>`;
