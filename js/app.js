@@ -942,18 +942,17 @@ function renderBattlesByCategory(battles, allSkaters) {
                     let progressHtml = '';
 
                     if (battle.status === 'completed') {
-                        // Badge de clasificado/eliminado
-                        if (bs.qualified) {
-                            statusHtml = '<span class="status-badge status-qualified"><i class="ph-fill ph-star"></i> Clasifica</span>';
-                        } else if (battle.phase && (battle.phase.toLowerCase().includes('final')) && !battle.phase.toLowerCase().includes('semi') && !battle.phase.toLowerCase().includes('cuartos')) {
-                            // En la Final mostrar puestos en vez de "Eliminado"
+                        // En la Final mostrar puestos para todos
+                        if (battle.phase && (battle.phase.toLowerCase().includes('final')) && !battle.phase.toLowerCase().includes('semi') && !battle.phase.toLowerCase().includes('cuartos')) {
                             const sorted = [...battle.skaters].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
                             const pos = sorted.findIndex(s => s.skaterId === bs.skaterId) + 1;
-                            const medals = ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49', '\ud83c\udfc5'];
-                            const medal = medals[pos - 1] || '\ud83c\udfc5';
-                            const posLabels = ['1\u00b0 Lugar', '2\u00b0 Lugar', '3\u00b0 Lugar', '4\u00b0 Lugar'];
-                            const label = posLabels[pos - 1] || `${pos}\u00b0 Lugar`;
+                            const medals = ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49', '&#127941;'];
+                            const medal = medals[pos - 1] || '&#127941;';
+                            const posLabels = ['1&ordm; Lugar', '2&ordm; Lugar', '3&ordm; Lugar', '4&ordm; Lugar'];
+                            const label = posLabels[pos - 1] || `${pos}&ordm; Lugar`;
                             statusHtml = `<span style="font-size:0.75rem; font-weight:700; color:var(--primary);">${medal} ${label}</span>`;
+                        } else if (bs.qualified) {
+                            statusHtml = '<span class="status-badge status-qualified"><i class="ph-fill ph-star"></i> Clasifica</span>';
                         } else {
                             statusHtml = '<span style="font-size:0.7rem; color:var(--text-muted);">Eliminado</span>';
                         }
@@ -1369,10 +1368,10 @@ function renderActiveBattle() {
 
                 slotsHtml += '<div class="family-counters">';
                 for (const [key, count] of Object.entries(familyCounts)) {
-                    const isActive = count > 0;
+                    if (count === 0) continue; // Solo mostrar familias utilizadas
                     const isHigh = count >= 2;
                     slotsHtml += `
-                        <div class="family-badge ${isActive ? 'active' : ''} ${isHigh ? 'highlight' : ''}">
+                        <div class="family-badge active ${isHigh ? 'highlight' : ''}">
                             <span>${key}</span>
                             <span class="count">${count}</span>
                         </div>
