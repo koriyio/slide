@@ -36,7 +36,14 @@ const AUTH_CONFIG = {
 };
 
 app.use((req, res, next) => {
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com; font-src 'self' https://fonts.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self';");
+    res.setHeader('Content-Security-Policy',
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com; " +
+        "font-src 'self' https://fonts.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; " +
+        "img-src 'self' data:; " +
+        "connect-src 'self' ws: wss: https:;"
+    );
     next();
 });
 
