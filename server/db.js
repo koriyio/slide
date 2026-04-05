@@ -306,20 +306,24 @@ class SlideDB {
             trickPerformed.finalScore = 0;
             trickPerformed.stopBonus = 0;
             trickPerformed.distanceBonus = 0;
-        } else if (trickPerformed.baseScore !== undefined) {
+        } else {
             const stopBonus = this.getStopBonus(trickPerformed);
             const adjustment = parseFloat(trickPerformed.adjustment) || 0;
             const distance = parseFloat(trickPerformed.distance) || 2.5;
             const distanceBonus = Math.max(0, Math.floor((distance - 2.5) / 0.5) * 1);
-            const finalScore = (trickPerformed.baseScore || 0) + adjustment + distanceBonus + stopBonus;
+            
+            // Lógica de COMBO (Regla 9.5.2.2)
+            let baseScore = trickPerformed.baseScore || 0;
+            if (trickPerformed.isCombo && trickPerformed.baseScore2) {
+                // (Base1 + Base2) * 1.10 (Bonus por transición)
+                baseScore = Math.round((baseScore + trickPerformed.baseScore2) * 1.1 * 100) / 100;
+            }
+
+            const finalScore = baseScore + adjustment + distanceBonus + stopBonus;
 
             trickPerformed.stopBonus = stopBonus;
             trickPerformed.distanceBonus = distanceBonus;
             trickPerformed.finalScore = Math.max(0, Math.round(finalScore * 100) / 100);
-        } else {
-            trickPerformed.finalScore = 0;
-            trickPerformed.stopBonus = 0;
-            trickPerformed.distanceBonus = 0;
         }
 
         trickPerformed.judgeRole = role;

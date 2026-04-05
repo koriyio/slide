@@ -38,6 +38,11 @@ const ui = {
     formJudge: document.getElementById('form-judge'),
     judgeTrickSelect: document.getElementById('judge-trick-select'),
     judgeTrickSearch: document.getElementById('judge-trick-search'),
+    // Combo Elements
+    judgeIsCombo: document.getElementById('judge-is-combo'),
+    comboSecondGroup: document.getElementById('combo-second-trick-group'),
+    judgeTrickSelect2: document.getElementById('judge-trick-select-2'),
+    judgeTrickSearch2: document.getElementById('judge-trick-search-2'),
 
     // Sidebar DB Actions
     btnExportDB: document.getElementById('btn-export-db'),
@@ -182,7 +187,6 @@ function setupLogin() {
             if (confirm('\u00BFSeguro que deseas salir?')) {
                 if (window.db && window.db.socket) {
                     window.db.socket.emit('logout');
-                    // Ensure reload even if socket fails or takes too long
                     setTimeout(() => {
                         location.reload();
                     }, 100);
@@ -190,6 +194,15 @@ function setupLogin() {
                     location.reload();
                 }
             }
+        });
+    }
+
+    // Evento Modo Combo
+    if (ui.judgeIsCombo) {
+        ui.judgeIsCombo.addEventListener('change', (e) => {
+            const isCombo = e.target.checked;
+            ui.comboSecondGroup.style.display = isCombo ? 'block' : 'none';
+            document.getElementById('label-slide-1').innerText = isCombo ? 'Primer Slide' : 'Buscar Slide';
         });
     }
 }
@@ -406,22 +419,26 @@ function setupEventListeners() {
         e.preventDefault();
         const trickId = ui.judgeTrickSelect.value;
         const isFail = document.getElementById('judge-is-fail').checked;
+        const isCombo = document.getElementById('judge-is-combo').checked;
+        const trickId2 = ui.judgeTrickSelect2 ? ui.judgeTrickSelect2.value : '';
 
         if (!trickId && !isFail) {
             return showToast('Selecciona un truco o marca como falla', true);
         }
 
+        if (isCombo && !trickId2 && !isFail) {
+            return showToast('Selecciona el segundo truco del combo', true);
+        }
+
         const adjustment = document.getElementById('judge-adjustment').value;
         const distance = document.getElementById('judge-distance').value;
         const slotIdx = parseInt(document.getElementById('judge-slot-index').value);
-
-        // Obtener nivel de stop seleccionado
         const stopLevel = parseInt(document.querySelector('input[name="judge-stop-level"]:checked')?.value || 0);
 
-        if (window.db.saveTrick(currentBattleId, currentJudgeSkaterId, trickId, adjustment, slotIdx, isFail, distance, stopLevel)) {
+        if (window.db.saveTrick(currentBattleId, currentJudgeSkaterId, trickId, adjustment, slotIdx, isFail, distance, stopLevel, isCombo, trickId2)) {
             ui.modalJudge.classList.add('hidden');
             renderActiveBattle();
-            showToast('Truco registrado' + (stopLevel > 0 ? ` con Stop Nivel ${stopLevel}` : ''));
+            showToast('Truco registrado' + (isCombo ? ' (COMBO)' : '') + (stopLevel > 0 ? ` con Stop Nivel ${stopLevel}` : ''));
         } else {
             showToast('Error al registrar', true);
         }
@@ -602,27 +619,17 @@ function populateCategories() {
     if (currentBracketsCat) ui.bracketsCategorySelect.value = currentBracketsCat;
 }
 
-function populateTricks(filterText = '') {
+function populateTricks(filter = '', selectId = 'judge-trick-select') {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    
     const tricks = window.db.getTricks();
-    const select = ui.judgeTrickSelect;
-    select.innerHTML = '<option value="">Selecciona un Slide...</option>';
+    select.innerHTML = '<option value="">-- Seleccionar Slide --</option>';
 
-    // Filtrar trucos si hay texto de b├║squeda
-    const filteredTricks = filterText.trim()
-        ? tricks.filter(t => t.name.toLowerCase().includes(filterText.toLowerCase()))
-        : tricks;
+    const searchText = filter.toLowerCase().trim();
+    const filteredTricks = tricks.filter(t => t.name.toLowerCase().includes(searchText));
 
-    if (filterText.trim() && filteredTricks.length === 0) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.innerText = 'No se encontraron trucos';
-        opt.disabled = true;
-        select.appendChild(opt);
-        return;
-    }
-
-    // Si hay filtro, mostrar sin grupos
-    if (filterText.trim()) {
+    if (searchText) {
         filteredTricks.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.id;
@@ -632,11 +639,11 @@ function populateTricks(filterText = '') {
         });
     } else {
         // Sin filtro, mostrar por familias
-        const families = [...new Set(filteredTricks.map(t => t.family))];
+        const families = [...new Set(tricks.map(t => t.family))];
         families.forEach(f => {
             const og = document.createElement('optgroup');
             og.label = f;
-            filteredTricks.filter(t => t.family === f).forEach(t => {
+            tricks.filter(t => t.family === f).forEach(t => {
                 const opt = document.createElement('option');
                 opt.value = t.id;
                 const diffLevel = t.id.split('-')[1].charAt(0).toUpperCase();
@@ -650,20 +657,26 @@ function populateTricks(filterText = '') {
 
 // Buscador de trucos en tiempo real con sugerencias visuales
 function setupTrickSearch() {
-    const searchInput = document.getElementById('judge-trick-search');
-    const suggestionsBox = document.getElementById('trick-suggestions');
+    // Configurar primer buscador
+    _attachAutocomplete('judge-trick-search', 'trick-suggestions', 'judge-trick-select');
+    // Configurar segundo buscador (Combo)
+    _attachAutocomplete('judge-trick-search-2', 'trick-suggestions-2', 'judge-trick-select-2');
+}
+
+function _attachAutocomplete(inputId, suggestionsId, selectId) {
+    const searchInput = document.getElementById(inputId);
+    const suggestionsBox = document.getElementById(suggestionsId);
+    const select = document.getElementById(selectId);
 
     if (searchInput && suggestionsBox) {
         searchInput.addEventListener('input', (e) => {
             const searchText = e.target.value.trim().toLowerCase();
             const tricks = window.db.getTricks();
 
-            // Filtrar trucos
             const filteredTricks = searchText
                 ? tricks.filter(t => t.name.toLowerCase().includes(searchText))
                 : [];
 
-            // Mostrar/ocultar sugerencias
             if (searchText && filteredTricks.length > 0) {
                 suggestionsBox.innerHTML = filteredTricks.slice(0, 10).map(t => {
                     const diffLevel = t.id.split('-')[1].charAt(0).toUpperCase();
@@ -672,8 +685,8 @@ function setupTrickSearch() {
                         match => `<span style="color:var(--primary); font-weight:700;">${match}</span>`
                     );
                     return `
-                        <div class="trick-suggestion-item"
-                             data-trick-id="${t.id}"
+                        <div class="trick-suggestion-item" 
+                             data-trick-id="${t.id}" 
                              data-trick-name="${t.name}"
                              style="padding:0.8rem 1rem; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center; transition:background 0.2s;">
                             <span style="font-size:0.9rem;">${highlight}</span>
@@ -684,14 +697,11 @@ function setupTrickSearch() {
                     `;
                 }).join('');
 
-                // Agregar evento click a cada sugerencia
                 suggestionsBox.querySelectorAll('.trick-suggestion-item').forEach(item => {
                     item.addEventListener('click', () => {
                         const trickId = item.dataset.trickId;
                         const trickName = item.dataset.trickName;
 
-                        // Seleccionar en el dropdown original
-                        const select = ui.judgeTrickSelect;
                         for (let i = 0; i < select.options.length; i++) {
                             if (select.options[i].value === trickId) {
                                 select.selectedIndex = i;
@@ -699,19 +709,13 @@ function setupTrickSearch() {
                             }
                         }
 
-                        // Limpiar y ocultar
                         searchInput.value = trickName;
                         suggestionsBox.style.display = 'none';
                         suggestionsBox.innerHTML = '';
                     });
 
-                    // Hover effect
-                    item.addEventListener('mouseenter', () => {
-                        item.style.background = 'rgba(245, 158, 11, 0.1)';
-                    });
-                    item.addEventListener('mouseleave', () => {
-                        item.style.background = 'transparent';
-                    });
+                    item.addEventListener('mouseenter', () => { item.style.background = 'rgba(245, 158, 11, 0.1)'; });
+                    item.addEventListener('mouseleave', () => { item.style.background = 'transparent'; });
                 });
 
                 suggestionsBox.style.display = 'block';
@@ -720,23 +724,18 @@ function setupTrickSearch() {
                 suggestionsBox.innerHTML = '';
             }
 
-            // También filtrar el dropdown original
-            populateTricks(e.target.value);
+            populateTricks(e.target.value, selectId);
         });
 
-        // Al presionar Enter, seleccionar el primer truco filtrado
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const firstSuggestion = suggestionsBox.querySelector('.trick-suggestion-item');
                 if (firstSuggestion) {
                     firstSuggestion.click();
-                } else {
-                    const select = ui.judgeTrickSelect;
-                    if (select.options.length > 1) {
-                        select.selectedIndex = 1;
-                        select.focus();
-                    }
+                } else if (select.options.length > 1) {
+                    select.selectedIndex = 1;
+                    select.focus();
                 }
             }
             if (e.key === 'Escape') {
@@ -745,14 +744,12 @@ function setupTrickSearch() {
             }
         });
 
-        // Cerrar al hacer click fuera
         document.addEventListener('click', (e) => {
             if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
                 suggestionsBox.style.display = 'none';
             }
         });
 
-        // Limpiar b├║squeda al abrir el modal
         searchInput.value = '';
         suggestionsBox.style.display = 'none';
         suggestionsBox.innerHTML = '';
@@ -1055,6 +1052,10 @@ function openJudgeModal(skaterId, skaterName, slotIndex) {
     document.getElementById('judge-slot-index').value = slotIndex;
     ui.formJudge.reset();
     document.getElementById('judge-is-fail').checked = false;
+    document.getElementById('judge-is-combo').checked = false; // Reset combo
+    document.getElementById('combo-second-trick-group').style.display = 'none';
+    document.getElementById('label-slide-1').innerText = 'Buscar Slide';
+    
     document.getElementById('judge-adjustment').value = 0;
 
     const slider = document.getElementById('judge-distance');
@@ -1067,18 +1068,11 @@ function openJudgeModal(skaterId, skaterName, slotIndex) {
         radio.checked = radio.value === '0';
     });
 
-    // Limpiar el buscador y recargar la lista completa de trucos
-    const searchInput = document.getElementById('judge-trick-search');
-    if (searchInput) {
-        searchInput.value = '';
-        populateTricks('');
-    }
-
-    // Ocultar info de combo inicialmente
-    document.getElementById('judge-combo-info').style.display = 'none';
-
-    // Actualizar contador de familias y combo preview
-    updateFamilyCounterAndCombo(skaterId, slotIndex);
+    // Limpiar buscadores y recargar listas
+    document.getElementById('judge-trick-search').value = '';
+    document.getElementById('judge-trick-search-2').value = '';
+    populateTricks('', 'judge-trick-select');
+    populateTricks('', 'judge-trick-select-2');
 
     ui.modalJudge.classList.remove('hidden');
 }
@@ -1434,7 +1428,10 @@ function renderActiveBattle() {
                                 ${droppedBadge}
                                 ${deleteBtn}
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <strong style="font-size:0.8rem; ${isFail ? 'text-decoration:line-through; color:var(--danger);' : ''}">${slide.name}</strong>
+                                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                                        <strong style="font-size:0.8rem; ${isFail ? 'text-decoration:line-through; color:var(--text-muted);' : ''}">${slide.name}</strong>
+                                        ${slide.isCombo ? '<span class="combo-badge">COMBO</span>' : ''}
+                                    </div>
                                     <div style="display:flex; align-items:center;">
                                         <strong style="color:${isDropped ? 'var(--text-muted)' : badgeColor}; font-size:0.95rem;">${slide.finalScore.toFixed(1)}</strong>
                                         ${countedBadge}

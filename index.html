@@ -315,16 +315,30 @@
             <form id="form-judge">
                 <input type="hidden" id="judge-slot-index" value="0">
 
-                <!-- Buscador de Trucos con Autocompletado -->
+                <!-- Modo Combo Toggle -->
+                <div class="form-group" style="flex-direction:row; align-items:center; justify-content:space-between; background:var(--primary-light); padding:0.6rem; border-radius:var(--radius-sm); border:1px solid var(--primary); margin-bottom:1rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <i class="ph-fill ph-intersect" style="color:var(--primary); font-size:1.2rem;"></i>
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="font-size:0.85rem; font-weight:700; color:var(--primary);">DERRAPE COMBINADO</span>
+                            <span style="font-size:0.65rem; color:var(--text-muted);">Bonus 10% (Regla 9.5.2.2)</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="judge-is-combo">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- Primer Slide (Buscador) -->
                 <div class="form-group">
-                    <label>Buscar Slide</label>
+                    <label id="label-slide-1">Primer Slide</label>
                     <div style="position:relative;">
                         <i class="ph ph-magnifying-glass"
                             style="position:absolute; left:0.85rem; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1.05rem; pointer-events:none;"></i>
                         <input type="text" id="judge-trick-search"
-                            placeholder="Escribe para buscar... (ej: Soul, Magic)" autocomplete="off"
+                            placeholder="Escribe para buscar... (ej: Magic)" autocomplete="off"
                             style="padding-left:2.7rem;">
-                        <!-- Lista de sugerencias -->
                         <div id="trick-suggestions"
                             style="position:absolute; top:100%; left:0; right:0; max-height:250px; overflow-y:auto; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); z-index:100; display:none; box-shadow:0 8px 30px rgba(0,0,0,0.4);">
                         </div>
@@ -332,13 +346,31 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Slide Realizado</label>
-                    <select id="judge-trick-select" style="max-height:200px; overflow-y:auto;">
+                    <select id="judge-trick-select" style="max-height:150px; overflow-y:auto;">
                         <!-- Dynamic Tricks -->
                     </select>
-                    <p style="font-size:0.7rem; color:var(--text-muted); margin-top:0.2rem;">
-                        <i class="ph ph-info"></i> Escribe arriba para filtrar o selecciona de la lista
-                    </p>
+                </div>
+
+                <!-- SEGUNDO SLIDE (Oculto por defecto) -->
+                <div id="combo-second-trick-group" style="display:none; border-left:3px solid var(--primary); padding-left:0.8rem; margin:1rem 0; animation: fadeIn 0.3s;">
+                    <div class="form-group">
+                        <label>Segundo Slide (Transición)</label>
+                        <div style="position:relative;">
+                            <i class="ph ph-magnifying-glass"
+                                style="position:absolute; left:0.85rem; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1.05rem; pointer-events:none;"></i>
+                            <input type="text" id="judge-trick-search-2"
+                                placeholder="Escribe segundo truco..." autocomplete="off"
+                                style="padding-left:2.7rem;">
+                            <div id="trick-suggestions-2"
+                                style="position:absolute; top:100%; left:0; right:0; max-height:250px; overflow-y:auto; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); z-index:100; display:none; box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <select id="judge-trick-select-2" style="max-height:150px; overflow-y:auto;">
+                            <!-- Dynamic Tricks 2 -->
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group"
                     style="display:inline-flex; align-items:center; gap:0.3rem; background:rgba(239, 68, 68, 0.08); padding:0.4rem 0.6rem; border-radius:var(--radius-sm); border:1px solid rgba(239, 68, 68, 0.2); cursor:pointer;"

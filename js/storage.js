@@ -396,57 +396,42 @@ class SlideStorage {
         ];
     }
 
-    saveTrick(battleId, skaterId, trickId, adjustment, slotIndex, isFail = false, distance = 2.5, stopLevel = 0) {
+    saveTrick(battleId, skaterId, trickId, adjustment, slotIndex, isFail = false, distance = 2.5, stopLevel = 0, isCombo = false, trickId2 = '') {
         if (!this.currentRole) return false;
 
-        let performedTrick;
-        const adjValue = parseFloat(adjustment) || 0;
-        const distValue = parseFloat(distance) || 2.5;
-        const stopLevelInt = parseInt(stopLevel) || 0;
-        // Bono por distancia: 1 punto extra por cada 0.5m sobre 2.5m (máx 15 pts en 10m)
-        const distanceBonus = Math.max(0, Math.round((distValue - 2.5) / 0.5) * 1);
+        const allTricks = this.getTricks();
+        const trick = allTricks.find(t => t.id === trickId);
+        const trick2 = isCombo ? allTricks.find(t => t.id === trickId2) : null;
 
-        if (isFail && (!trickId || trickId === "")) {
-            performedTrick = {
-                id: Date.now(),
-                trickId: 'fail',
-                name: 'Falla / Caída',
-                adjustment: 0,
-                baseScore: 0,
-                distance: distValue,
-                distanceBonus: 0,
-                stopLevel: 0,
-                stopBonus: 0,
-                finalScore: 0,
-                isFail: true,
-                timestamp: new Date().toISOString()
-            };
-        } else {
-            const trickBase = this.getTricks().find(t => t.id === trickId);
-            if (!trickBase) return false;
+        if (!trick && !isFail) return false;
 
-            const stopBonuses = { 0: 0, 1: 2.0, 2: 4.0, 3: 6.0 };
-            const stopBonus = stopBonuses[stopLevelInt] || 0;
-
-            // Cálculo local debe coincidir con el servidor (db.js)
-            const finalScore = isFail ? 0 : Math.max(0, trickBase.baseScore + adjValue + distanceBonus + stopBonus);
-            performedTrick = {
-                id: Date.now(),
-                trickId: trickId,
-                name: trickBase.name,
-                adjustment: adjValue,
-                baseScore: trickBase.baseScore,
-                distance: distValue,
-                distanceBonus: distanceBonus,
-                stopLevel: stopLevelInt,
-                stopBonus: stopBonus,
-                finalScore: Math.round(finalScore * 100) / 100,
-                isFail: isFail,
-                timestamp: new Date().toISOString()
-            };
+        let trickName = isFail ? 'Falla' : trick.name;
+        if (isCombo && trick2) {
+            trickName = `${trick.name} + ${trick2.name}`;
         }
 
-        this.socket.emit('save-trick', { battleId, skaterId, trickPerformed: performedTrick, role: this.currentRole, slotIndex });
+        const trickPerformed = {
+            trickId,
+            name: trickName,
+            family: trick ? trick.family : '',
+            baseScore: trick ? trick.baseScore : 0,
+            adjustment: parseFloat(adjustment) || 0,
+            distance: parseFloat(distance) || 2.5,
+            stopLevel: parseInt(stopLevel) || 0,
+            isFail: isFail,
+            isCombo: isCombo,
+            trickId2: trickId2,
+            baseScore2: trick2 ? trick2.baseScore : 0
+        };
+
+        this.socket.emit('save-trick', {
+            battleId,
+            skaterId,
+            trickPerformed,
+            role: this.currentRole,
+            slotIndex
+        });
+
         return true;
     }
 
