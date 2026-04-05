@@ -1,10 +1,10 @@
-const CACHE_NAME = 'slide-battle-v2';
+const CACHE_NAME = 'slide-battle-v3';
 const ASSETS = [
     './',
     './index.html',
     './css/style.css',
-    './js/app.js?v=1.2.0',
-    './js/storage.js?v=1.2.0',
+    './js/app.js?v=1.3.1',
+    './js/storage.js?v=1.3.1',
     './img/logo.png',
     'https://unpkg.com/@phosphor-icons/web',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
