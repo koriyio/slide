@@ -289,6 +289,11 @@ function setupNavigation() {
 function setupEventListeners() {
     // Modal Toggles
     ui.btnAddSkater.onclick = () => {
+        // Bloquear si no es Juez 1 (Único con permiso de escritura)
+        if (window.db.currentRole !== 'Juez 1') {
+            showToast('⚠️ Solo el Juez 1 puede inscribir patinadores', true);
+            return;
+        }
         ui.formSkater.reset();
         ui.modalSkater.classList.remove('hidden');
     };
@@ -336,17 +341,17 @@ function setupEventListeners() {
                     return;
                 }
 
-                const seed = parseInt(seedValue) || 0;
+                const seedNumber = parseInt(seedValue) || 0;
 
                 // Mostrar loading
                 showToast('Inscribiendo patinador...');
-                console.log('[UI] Datos a enviar:', { fName, lName, catId, seed, idCode, nat });
-
+                
                 if (!window.db || typeof window.db.addSkater !== 'function') {
-                    throw new Error('La base de datos (storage.js) no está lista');
+                    throw new Error('La base de datos no está lista');
                 }
 
-                window.db.addSkater(fName, lName, catId, seed, idCode, nat, (response) => {
+                // Llamar a storage.js con los parámetros mapeados correctamente
+                window.db.addSkater(fName, lName, catId, seedNumber, idCode, nat, (response) => {
                     console.log('[UI] Respuesta del servidor:', response);
                     if (response && response.success) {
                         ui.modalSkater.classList.add('hidden');
@@ -355,12 +360,12 @@ function setupEventListeners() {
                         if (typeof renderDashboard === 'function') renderDashboard();
                         showToast('✓ Patinador inscrito con éxito');
                     } else {
-                        console.error('[UI] Error del servidor:', response);
-                        showToast('Error: ' + (response?.message || 'No se pudo inscribir'), true);
+                        console.error('[UI] Reintento/Error del servidor:', response);
+                        showToast('Error: ' + (response?.message || 'No autorizado o error de red'), true);
                     }
                 });
             } catch (err) {
-                console.error('[UI] Error crítico en el formulario:', err);
+                console.error('[UI] Error crítico:', err);
                 showToast('Error inesperado al registrar', true);
             }
         };
