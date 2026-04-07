@@ -88,11 +88,11 @@ function init() {
     setupLogin();
     setupNavigation();
     setupEventListeners();
-    
+
     // Reset filters
     if (ui.battlesCategorySelect) ui.battlesCategorySelect.value = '';
     if (ui.bracketsCategorySelect) ui.bracketsCategorySelect.value = '';
-    
+
     populateCategories();
     populateTricks();
     setupTrickSearch();
@@ -307,6 +307,14 @@ function setupEventListeners() {
             try {
                 e.preventDefault();
                 console.log('[UI] Iniciando registro de patinador...');
+                console.log('[UI] Form data:', {
+                    firstname: document.getElementById('skater-firstname')?.value,
+                    lastname: document.getElementById('skater-lastname')?.value,
+                    idCode: document.getElementById('skater-id-code')?.value,
+                    nationality: document.getElementById('skater-nationality')?.value,
+                    category: document.getElementById('skater-category')?.value,
+                    seed: document.getElementById('skater-seed')?.value
+                });
 
                 // Obtener valores de los inputs de forma segura
                 const inputFName = document.getElementById('skater-firstname');
@@ -345,10 +353,12 @@ function setupEventListeners() {
 
                 // Mostrar loading
                 showToast('Inscribiendo patinador...');
-                
+
                 if (!window.db || typeof window.db.addSkater !== 'function') {
                     throw new Error('La base de datos no está lista');
                 }
+
+                console.log('[UI] Llamando a window.db.addSkater con:', { fName, lName, catId, seedNumber, idCode, nat });
 
                 // Llamar a storage.js con los parámetros mapeados correctamente
                 window.db.addSkater(fName, lName, catId, seedNumber, idCode, nat, (response) => {
@@ -366,7 +376,7 @@ function setupEventListeners() {
                 });
             } catch (err) {
                 console.error('[UI] Error crítico:', err);
-                showToast('Error inesperado al registrar', true);
+                showToast('Error inesperado: ' + err.message, true);
             }
         };
     }
@@ -658,7 +668,7 @@ function populateCategories() {
 function populateTricks(filter = '', selectId = 'judge-trick-select') {
     const select = document.getElementById(selectId);
     if (!select) return;
-    
+
     const tricks = window.db.getTricks();
     select.innerHTML = '<option value="">-- Seleccionar Slide --</option>';
 
@@ -1091,7 +1101,7 @@ function openJudgeModal(skaterId, skaterName, slotIndex) {
     document.getElementById('judge-is-combo').checked = false; // Reset combo
     document.getElementById('combo-second-trick-group').style.display = 'none';
     document.getElementById('label-slide-1').innerText = 'Buscar Slide';
-    
+
     document.getElementById('judge-adjustment').value = 0;
 
     const slider = document.getElementById('judge-distance');
@@ -1574,7 +1584,7 @@ function renderBrackets() {
             sortedSkaters.forEach((bs, idx) => {
                 const sInfo = db.skaters.find(s => s.id == bs.skaterId);
                 const isQualified = bs.qualified === true;
-                
+
                 const rankLabel = isFinal
                     ? (idx === 0 ? '&#129351; ORO' : idx === 1 ? '&#129352; PLATA' : idx === 2 ? '&#129353; BRONCE' : idx === 3 ? '4.' : '')
                     : '';
@@ -1657,7 +1667,7 @@ function exportTournamentCSV() {
         const phaseMap = { 'Preliminar': 1, 'Heat': 1, 'Cuartos': 2, 'Semifinal': 3, 'Final': 4 };
 
         if (skaterBattles.length > 0) {
-            const lastBattle = skaterBattles.reduce((last, b) => 
+            const lastBattle = skaterBattles.reduce((last, b) =>
                 (phaseMap[b.phase] || 0) > (phaseMap[last.phase] || 0) ? b : last, skaterBattles[0]);
             const result = lastBattle.skaters.find(s => s.skaterId === sk.id);
 
@@ -1824,7 +1834,7 @@ function exportTournamentCSV() {
             currentCat = sk.categoryName;
             html += `<tr class="cat-row"><td colspan="11">${currentCat}</td></tr>`;
         }
-        
+
         const posClass = sk.finalPosition === 1 ? 'pos-1' : sk.finalPosition === 2 ? 'pos-2' : sk.finalPosition === 3 ? 'pos-3' : 'pos-other';
         const posLabel = `${sk.finalPosition}\u00b0`;
 
@@ -1872,7 +1882,7 @@ function showPodium(battleId) {
 
 function renderPodiumHTML(podium) {
     if (!podium) return '';
-    
+
     const getCard = (sk, label, color, icon) => {
         if (!sk || !sk.info) return '';
         return `
@@ -1921,10 +1931,10 @@ function showToast(message, isError = false) {
 
     const toast = document.createElement('div');
     toast.className = `toast ${isError ? 'error' : ''}`;
-    
+
     // Icono según tipo
     const icon = isError ? 'warning-circle' : 'check-circle';
-    
+
     toast.innerHTML = `
         <div style="display:flex; align-items:center; gap:0.8rem;">
             <i class="ph-fill ph-${icon}" style="font-size:1.2rem;"></i>
