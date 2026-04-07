@@ -1953,6 +1953,9 @@ function showToast(message, isError = false) {
     }, 4000);
 }
 
+// Exportar al objeto window para que sea accesible desde cualquier scope
+window.showToast = showToast;
+
 document.addEventListener('DOMContentLoaded', init);
 
 window.addEventListener('online', () => {
