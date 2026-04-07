@@ -120,13 +120,14 @@ class SlideStorage {
         this.localData.skaters.push(newSkater);
 
         // Emitir al servidor con callback
+        console.log('[STORAGE] Emitiendo add-skater:', newSkater);
         this.socket.emit('add-skater', newSkater, (response) => {
+            console.log('[STORAGE] Recibida respuesta add-skater:', response);
             if (callback) callback(response);
             if (!response || !response.success) {
                 // Si falló, revertir el cambio local
                 this.localData.skaters = this.localData.skaters.filter(s => s.id != newSkater.id);
                 if (window.renderSkaters) renderSkaters();
-                if (window.showToast) showToast(response?.message || 'Error al agregar patinador', true);
             }
         });
         return newSkater;

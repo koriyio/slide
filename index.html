@@ -316,15 +316,15 @@
                 <input type="hidden" id="judge-slot-index" value="0">
 
                 <!-- Modo Combo Toggle -->
-                <div class="form-group" style="flex-direction:row; align-items:center; justify-content:space-between; background:var(--primary-light); padding:0.4rem 0.6rem; border-radius:var(--radius-sm); border:1px solid var(--primary); margin-bottom:0.5rem;">
-                    <div style="display:flex; align-items:center; gap:0.4rem;">
-                        <i class="ph-fill ph-intersect" style="color:var(--primary); font-size:1.1rem;"></i>
+                <div class="form-group" style="flex-direction:row; align-items:center; justify-content:space-between; background:var(--primary-light); padding:0.6rem; border-radius:var(--radius-sm); border:1px solid var(--primary); margin-bottom:1rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <i class="ph-fill ph-intersect" style="color:var(--primary); font-size:1.2rem;"></i>
                         <div style="display:flex; flex-direction:column;">
-                            <span style="font-size:0.8rem; font-weight:700; color:var(--primary);">DERRAPE COMBINADO</span>
-                            <span style="font-size:0.6rem; color:var(--text-muted);">Bonus 10% (Regla 9.5.2.2)</span>
+                            <span style="font-size:0.85rem; font-weight:700; color:var(--primary);">DERRAPE COMBINADO</span>
+                            <span style="font-size:0.65rem; color:var(--text-muted);">Bonus 10% (Regla 9.5.2.2)</span>
                         </div>
                     </div>
-                    <label class="switch" style="transform: scale(0.9);">
+                    <label class="switch">
                         <input type="checkbox" id="judge-is-combo">
                         <span class="slider"></span>
                     </label>
@@ -352,7 +352,7 @@
                 </div>
 
                 <!-- SEGUNDO SLIDE (Oculto por defecto) -->
-                <div id="combo-second-trick-group" style="display:none; border-left:3px solid var(--primary); padding-left:0.6rem; margin:0.5rem 0; animation: fadeIn 0.3s;">
+                <div id="combo-second-trick-group" style="display:none; border-left:3px solid var(--primary); padding-left:0.8rem; margin:1rem 0; animation: fadeIn 0.3s;">
                     <div class="form-group">
                         <label>Segundo Slide (Transición)</label>
                         <div style="position:relative;">
@@ -497,7 +497,7 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary btn-cancel" id="btn-cancel-skater">Cancelar</button>
-                    <button type="submit" class="btn-primary">Guardar Patinador</button>
+                    <button type="submit" class="btn-primary" id="btn-save-skater">Guardar Patinador</button>
                 </div>
             </form>
         </div>

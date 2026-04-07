@@ -18,6 +18,7 @@ const ui = {
     // Modals & Forms
     modalSkater: document.getElementById('modal-skater'),
     formSkater: document.getElementById('form-skater'),
+    btnSaveSkater: document.getElementById('btn-save-skater'),
     categorySelect: document.getElementById('skater-category'),
 
     // Battles View
@@ -296,44 +297,74 @@ function setupEventListeners() {
     document.getElementById('btn-cancel-skater').onclick = () => ui.modalSkater.classList.add('hidden');
 
     // Form Submit
-    ui.formSkater.onsubmit = (e) => {
-        e.preventDefault();
-        const fName = document.getElementById('skater-firstname').value.trim();
-        const lName = document.getElementById('skater-lastname').value.trim();
-        const catId = ui.categorySelect.value;
-        const seed = document.getElementById('skater-seed').value;
-        const idCode = document.getElementById('skater-id-code').value.trim();
-        const nat = document.getElementById('skater-nationality') ? document.getElementById('skater-nationality').value : '';
+    if (ui.formSkater) {
+        ui.formSkater.onsubmit = (e) => {
+            try {
+                e.preventDefault();
+                console.log('[UI] Iniciando registro de patinador...');
 
-        // Validaciones
-        if (!fName) {
-            showToast('El nombre es obligatorio', true);
-            return;
-        }
-        if (!lName) {
-            showToast('El apellido es obligatorio', true);
-            return;
-        }
-        if (!catId) {
-            showToast('Debes seleccionar una categoría', true);
-            return;
-        }
+                // Obtener valores de los inputs de forma segura
+                const inputFName = document.getElementById('skater-firstname');
+                const inputLName = document.getElementById('skater-lastname');
+                const inputCat = document.getElementById('skater-category');
+                const inputSeed = document.getElementById('skater-seed');
+                const inputId = document.getElementById('skater-id-code');
+                const inputNat = document.getElementById('skater-nationality');
 
-        // Mostrar loading
-        showToast('Inscribiendo patinador...');
+                if (!inputFName || !inputLName || !inputCat) {
+                    throw new Error('No se encontraron los campos del formulario');
+                }
 
-        window.db.addSkater(fName, lName, catId, seed, idCode, nat, (response) => {
-            if (response && response.success) {
-                ui.modalSkater.classList.add('hidden');
-                ui.formSkater.reset();
-                renderSkaters();
-                renderDashboard();
-                showToast('\u2713 Patinador inscrito con \u00e9xito');
-            } else {
-                showToast('Error: ' + (response?.message || 'No se pudo inscribir el patinador'), true);
+                const fName = inputFName.value.trim();
+                const lName = inputLName.value.trim();
+                const catId = inputCat.value;
+                const seedValue = inputSeed ? inputSeed.value : '0';
+                const idCode = inputId ? inputId.value.trim() : '';
+                const nat = inputNat ? inputNat.value.trim() : '';
+
+                // Validaciones
+                if (!fName) {
+                    showToast('El nombre es obligatorio', true);
+                    return;
+                }
+                if (!lName) {
+                    showToast('El apellido es obligatorio', true);
+                    return;
+                }
+                if (!catId) {
+                    showToast('Debes seleccionar una categoría', true);
+                    return;
+                }
+
+                const seed = parseInt(seedValue) || 0;
+
+                // Mostrar loading
+                showToast('Inscribiendo patinador...');
+                console.log('[UI] Datos a enviar:', { fName, lName, catId, seed, idCode, nat });
+
+                if (!window.db || typeof window.db.addSkater !== 'function') {
+                    throw new Error('La base de datos (storage.js) no está lista');
+                }
+
+                window.db.addSkater(fName, lName, catId, seed, idCode, nat, (response) => {
+                    console.log('[UI] Respuesta del servidor:', response);
+                    if (response && response.success) {
+                        ui.modalSkater.classList.add('hidden');
+                        ui.formSkater.reset();
+                        renderSkaters();
+                        if (typeof renderDashboard === 'function') renderDashboard();
+                        showToast('✓ Patinador inscrito con éxito');
+                    } else {
+                        console.error('[UI] Error del servidor:', response);
+                        showToast('Error: ' + (response?.message || 'No se pudo inscribir'), true);
+                    }
+                });
+            } catch (err) {
+                console.error('[UI] Error crítico en el formulario:', err);
+                showToast('Error inesperado al registrar', true);
             }
-        });
-    };
+        };
+    }
 
     // Battles Logic
     ui.battlesCategorySelect.onchange = () => {
@@ -1872,6 +1903,39 @@ function launchConfetti() {
         container.appendChild(confetti);
     }
     setTimeout(() => { container.style.display = 'none'; }, 4000);
+}
+
+/**
+ * Muestra una notificación visual (Toast) en la pantalla.
+ * @param {string} message - El mensaje a mostrar.
+ * @param {boolean} isError - Si es un mensaje de error (rojo).
+ */
+function showToast(message, isError = false) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${isError ? 'error' : ''}`;
+    
+    // Icono según tipo
+    const icon = isError ? 'warning-circle' : 'check-circle';
+    
+    toast.innerHTML = `
+        <div style="display:flex; align-items:center; gap:0.8rem;">
+            <i class="ph-fill ph-${icon}" style="font-size:1.2rem;"></i>
+            <span style="flex:1;">${message}</span>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto-eliminar después de 4 segundos
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        toast.style.transition = 'all 0.5s ease';
+        setTimeout(() => toast.remove(), 500);
+    }, 4000);
 }
 
 document.addEventListener('DOMContentLoaded', init);
