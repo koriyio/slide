@@ -256,7 +256,11 @@ class SlideDB {
                     [
                         battleId,
                         s.skaterId,
+<<<<<<< HEAD
                         s.judging || {},
+=======
+                        JSON.stringify(s.judging || {}),
+>>>>>>> 5ac4072 (Fix race condition and JSON ID parsing bugs in battle heat engine generation)
                         s.totalScore || 0,
                         s.qualified ? 1 : 0
                     ]
@@ -414,7 +418,7 @@ class SlideDB {
                     await client.query(
                         `INSERT INTO battle_skaters (battle_id, skater_id, judging, total_score, qualified)
                          VALUES ($1, $2, $3, $4, $5)`,
-                        [b.id, s.skaterId, s.judging || {}, s.totalScore || 0, s.qualified ? 1 : 0]
+                        [b.id, s.skaterId, JSON.stringify(s.judging || {}), s.totalScore || 0, s.qualified ? 1 : 0]
                     );
                 }
             }

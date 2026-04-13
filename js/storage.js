@@ -106,7 +106,7 @@ class SlideStorage {
 
     addSkater(firstName, lastName, categoryId, seedNumber, externalId = '', nationality = '', callback) {
         const newSkater = {
-            id: Date.now() + Math.floor(Math.random() * 10000000),
+            id: String(Date.now() + Math.floor(Math.random() * 10000000)),
             firstName,
             lastName,
             categoryId,
@@ -203,7 +203,7 @@ class SlideStorage {
         if (n === 3 || n === 4) {
             let newBattles = [];
             newBattles.push({
-                id: Date.now(),
+                id: String(Date.now()),
                 categoryId: categoryId,
                 phase: 'Final',
                 heatNumber: 1,
@@ -251,7 +251,7 @@ class SlideStorage {
         finalGroups.forEach((grp, idx) => {
             if (!grp) return;
             newBattles.push({
-                id: Date.now() + idx + Math.floor(Math.random() * 1000),
+                id: String(Date.now() + idx + Math.floor(Math.random() * 1000)),
                 categoryId: categoryId,
                 phase: 'Preliminar',
                 heatNumber: idx + 1,
@@ -496,7 +496,7 @@ class SlideStorage {
         let newBattles = [];
         groups.forEach((grp, idx) => {
             newBattles.push({
-                id: Date.now() + idx,
+                id: String(Date.now() + idx),
                 categoryId: categoryId,
                 phase: nextPhase,
                 heatNumber: idx + 1,
