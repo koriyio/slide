@@ -256,11 +256,7 @@ class SlideDB {
                     [
                         battleId,
                         s.skaterId,
-<<<<<<< HEAD
-                        s.judging || {},
-=======
                         JSON.stringify(s.judging || {}),
->>>>>>> 5ac4072 (Fix race condition and JSON ID parsing bugs in battle heat engine generation)
                         s.totalScore || 0,
                         s.qualified ? 1 : 0
                     ]
