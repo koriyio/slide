@@ -88,11 +88,11 @@ function init() {
     setupLogin();
     setupNavigation();
     setupEventListeners();
-
+    
     // Reset filters
     if (ui.battlesCategorySelect) ui.battlesCategorySelect.value = '';
     if (ui.bracketsCategorySelect) ui.bracketsCategorySelect.value = '';
-
+    
     populateCategories();
     populateTricks();
     setupTrickSearch();
@@ -204,6 +204,11 @@ function setupLogin() {
             const isCombo = e.target.checked;
             ui.comboSecondGroup.style.display = isCombo ? 'block' : 'none';
             document.getElementById('label-slide-1').innerText = isCombo ? 'Primer Slide' : 'Buscar Slide';
+            
+            const comboDistanceGroup = document.getElementById('combo-distance-group');
+            if (comboDistanceGroup) comboDistanceGroup.style.display = isCombo ? 'block' : 'none';
+            const labelDistance1 = document.getElementById('label-distance-1');
+            if (labelDistance1) labelDistance1.innerText = isCombo ? 'Distancia Primer Derrape' : 'Distancia del Derrape';
         });
     }
 }
@@ -307,14 +312,6 @@ function setupEventListeners() {
             try {
                 e.preventDefault();
                 console.log('[UI] Iniciando registro de patinador...');
-                console.log('[UI] Form data:', {
-                    firstname: document.getElementById('skater-firstname')?.value,
-                    lastname: document.getElementById('skater-lastname')?.value,
-                    idCode: document.getElementById('skater-id-code')?.value,
-                    nationality: document.getElementById('skater-nationality')?.value,
-                    category: document.getElementById('skater-category')?.value,
-                    seed: document.getElementById('skater-seed')?.value
-                });
 
                 // Obtener valores de los inputs de forma segura
                 const inputFName = document.getElementById('skater-firstname');
@@ -353,12 +350,10 @@ function setupEventListeners() {
 
                 // Mostrar loading
                 showToast('Inscribiendo patinador...');
-
+                
                 if (!window.db || typeof window.db.addSkater !== 'function') {
                     throw new Error('La base de datos no está lista');
                 }
-
-                console.log('[UI] Llamando a window.db.addSkater con:', { fName, lName, catId, seedNumber, idCode, nat });
 
                 // Llamar a storage.js con los parámetros mapeados correctamente
                 window.db.addSkater(fName, lName, catId, seedNumber, idCode, nat, (response) => {
@@ -376,7 +371,7 @@ function setupEventListeners() {
                 });
             } catch (err) {
                 console.error('[UI] Error crítico:', err);
-                showToast('Error inesperado: ' + err.message, true);
+                showToast('Error inesperado al registrar', true);
             }
         };
     }
@@ -478,10 +473,11 @@ function setupEventListeners() {
 
         const adjustment = document.getElementById('judge-adjustment').value;
         const distance = document.getElementById('judge-distance').value;
+        const distance2 = document.getElementById('judge-distance-2') ? document.getElementById('judge-distance-2').value : 2.0;
         const slotIdx = parseInt(document.getElementById('judge-slot-index').value);
         const stopLevel = parseInt(document.querySelector('input[name="judge-stop-level"]:checked')?.value || 0);
 
-        if (window.db.saveTrick(currentBattleId, currentJudgeSkaterId, trickId, adjustment, slotIdx, isFail, distance, stopLevel, isCombo, trickId2)) {
+        if (window.db.saveTrick(currentBattleId, currentJudgeSkaterId, trickId, adjustment, slotIdx, isFail, distance, stopLevel, isCombo, trickId2, distance2)) {
             ui.modalJudge.classList.add('hidden');
             renderActiveBattle();
             showToast('Truco registrado' + (isCombo ? ' (COMBO)' : '') + (stopLevel > 0 ? ` con Stop Nivel ${stopLevel}` : ''));
@@ -495,6 +491,14 @@ function setupEventListeners() {
     if (distanceSlider && distanceVal) {
         distanceSlider.oninput = (e) => {
             distanceVal.innerText = e.target.value + 'm';
+        };
+    }
+    
+    const distanceSlider2 = document.getElementById('judge-distance-2');
+    const distanceVal2 = document.getElementById('judge-distance-val-2');
+    if (distanceSlider2 && distanceVal2) {
+        distanceSlider2.oninput = (e) => {
+            distanceVal2.innerText = e.target.value + 'm';
         };
     }
 
@@ -668,7 +672,7 @@ function populateCategories() {
 function populateTricks(filter = '', selectId = 'judge-trick-select') {
     const select = document.getElementById(selectId);
     if (!select) return;
-
+    
     const tricks = window.db.getTricks();
     select.innerHTML = '<option value="">-- Seleccionar Slide --</option>';
 
@@ -807,10 +811,9 @@ function _attachAutocomplete(inputId, suggestionsId, selectId) {
 function deleteSkater(id) {
     if (!confirm('¿Seguro que deseas eliminar a este patinador?')) return;
     console.log('[DELETE] Eliminando ID:', id);
-    window.db.socket.emit('delete-skater', String(id));
-    if (window.db.localData && window.db.localData.skaters) {
-        window.db.localData.skaters = window.db.localData.skaters.filter(s => String(s.id) !== String(id));
-    }
+    // BUG FIX: use db.deleteSkater() which handles local update + socket emit
+    // (previously also directly called socket.emit causing double-emit)
+    window.db.deleteSkater(String(id));
     renderSkaters();
     renderDashboard();
     showToast('Patinador eliminado.', false);
@@ -955,8 +958,12 @@ function renderBattlesByCategory(battles, allSkaters) {
             if (battle.status === 'completed') {
                 statusBadge = '<span class="status-badge status-completed"><i class="ph-fill ph-check-circle"></i> Finalizada</span>';
             } else {
-                // Verificar si hay trucos registrados (parcial) o est├í vacía (pendiente)
-                const hasTricks = battle.skaters.some(bs => bs.judging && Object.values(bs.judging).some(role => role.some(t => t !== null)));
+                // BUG FIX: guard against null/empty judging arrays before calling .some()
+                const hasTricks = battle.skaters.some(bs => 
+                    bs.judging && Object.values(bs.judging).some(roleArr => 
+                        Array.isArray(roleArr) && roleArr.some(t => t !== null)
+                    )
+                );
                 statusBadge = `<span class="status-badge ${hasTricks ? 'status-partial' : 'status-pending'}">
                     <i class="ph ph-${hasTricks ? 'clock' : 'circle'}"></i>
                     ${hasTricks ? 'En Progreso' : 'Pendiente'}
@@ -1061,6 +1068,7 @@ function checkAndShowNextPhaseButton(catId) {
     if (!catId) return; // No mostrar botón cuando se ven todas las categorías
 
     const battles = window.db.getBattlesByCategory(catId);
+    if (!battles || battles.length === 0) return;
     const currentBattles = battles.filter(b => b.phase === battles[battles.length - 1].phase);
     const uncompleted = currentBattles.some(b => b.status !== 'completed');
     const isFinal = currentBattles.some(b => b.phase === 'Final');
@@ -1072,6 +1080,18 @@ function checkAndShowNextPhaseButton(catId) {
         ui.battlesContainer.appendChild(nextPhaseDiv);
     }
 }
+// EXPOSE global wrapper: called from dynamic HTML onclick="generateHeats('catId')"
+window.generateHeats = function(catId) {
+    if (!catId) return;
+    const skatersCount = window.db.getSkaters().filter(s => s.categoryId === catId).length;
+    if (skatersCount < 3) {
+        return showToast('Se necesitan al menos 3 patinadores para hacer grupos', true);
+    }
+    if (confirm(`¿Generar grupos para esta categoría? Se borrarán los grupos actuales.`)) {
+        window.db.generateHeats(catId);
+        showToast('Generando grupos en el servidor...');
+    }
+};
 
 // --- ACTIVE BATTLE ---
 function openBattle(battleId, fromServer = false) {
@@ -1084,13 +1104,14 @@ function openBattle(battleId, fromServer = false) {
 
     renderActiveBattle();
 
-    // Si es el administrador (Juez 1) y no viene del servidor, forzar a los dem├ís a ir a esta batalla
+    // Si es el administrador (Juez 1) y no viene del servidor, forzar a los demás a ir a esta batalla
     if (window.db && window.db.currentRole === 'Juez 1' && !fromServer) {
         if (window.db.socket) {
             window.db.socket.emit('admin-focus-battle', battleId);
         }
     }
 }
+window.openBattle = openBattle;
 
 function openJudgeModal(skaterId, skaterName, slotIndex) {
     currentJudgeSkaterId = skaterId;
@@ -1100,14 +1121,23 @@ function openJudgeModal(skaterId, skaterName, slotIndex) {
     document.getElementById('judge-is-fail').checked = false;
     document.getElementById('judge-is-combo').checked = false; // Reset combo
     document.getElementById('combo-second-trick-group').style.display = 'none';
+    const comboDistanceGroup = document.getElementById('combo-distance-group');
+    if (comboDistanceGroup) comboDistanceGroup.style.display = 'none';
+    const labelDistance1 = document.getElementById('label-distance-1');
+    if (labelDistance1) labelDistance1.innerText = 'Buscar Slide';
     document.getElementById('label-slide-1').innerText = 'Buscar Slide';
-
+    
     document.getElementById('judge-adjustment').value = 0;
 
     const slider = document.getElementById('judge-distance');
     const sliderVal = document.getElementById('judge-distance-val');
-    if (slider) slider.value = 2.5;
-    if (sliderVal) sliderVal.innerText = '2.5m';
+    if (slider) slider.value = 2.0;
+    if (sliderVal) sliderVal.innerText = '2.0m';
+    
+    const slider2 = document.getElementById('judge-distance-2');
+    const sliderVal2 = document.getElementById('judge-distance-val-2');
+    if (slider2) slider2.value = 2.0;
+    if (sliderVal2) sliderVal2.innerText = '2.0m';
 
     // Resetear selector de Stop
     document.querySelectorAll('input[name="judge-stop-level"]').forEach(radio => {
@@ -1314,16 +1344,19 @@ function renderActiveBattle() {
 
                 <!-- Resultados por Juez (Siempre visibles) -->
                 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.4rem; margin-bottom:0.8rem; font-size:0.75rem;">
-                    <div style="background:var(--bg-app); padding:0.5rem; border-radius:4px; border-bottom:2px solid ${j1Sum > 0 ? 'var(--primary)' : 'var(--border)'}; text-align:center;">
+                    <div style="background:var(--bg-app); padding:0.5rem; border-radius:4px; border-bottom:2px solid ${(judging['Juez 1']||[]).filter(s=>s!==null).length >= maxSlots ? 'var(--primary)' : 'var(--border)'}; text-align:center;">
                         <div style="font-size:0.65rem; color:var(--text-muted); margin-bottom:0.2rem;">JUEZ 1</div>
+                        <div style="font-size:0.75rem; color:${(judging['Juez 1']||[]).filter(s=>s!==null).length >= maxSlots ? 'var(--primary)' : 'var(--text-muted)'}">${(judging['Juez 1']||[]).filter(s=>s!==null).length} / ${maxSlots} <i class="ph-fill ${(judging['Juez 1']||[]).filter(s=>s!==null).length >= maxSlots ? 'ph-check-circle' : 'ph-clock'}"></i></div>
                         <div style="font-size:1.1rem; font-weight:700; color:${j1Sum > 0 ? 'var(--primary)' : 'var(--text-muted)'}">${j1Sum > 0 ? j1Sum.toFixed(1) : '--'}</div>
                     </div>
-                    <div style="background:var(--bg-app); padding:0.5rem; border-radius:4px; border-bottom:2px solid ${j2Sum > 0 ? 'var(--primary)' : 'var(--border)'}; text-align:center;">
+                    <div style="background:var(--bg-app); padding:0.5rem; border-radius:4px; border-bottom:2px solid ${(judging['Juez 2']||[]).filter(s=>s!==null).length >= maxSlots ? 'var(--primary)' : 'var(--border)'}; text-align:center;">
                         <div style="font-size:0.65rem; color:var(--text-muted); margin-bottom:0.2rem;">JUEZ 2</div>
+                        <div style="font-size:0.75rem; color:${(judging['Juez 2']||[]).filter(s=>s!==null).length >= maxSlots ? 'var(--primary)' : 'var(--text-muted)'}">${(judging['Juez 2']||[]).filter(s=>s!==null).length} / ${maxSlots} <i class="ph-fill ${(judging['Juez 2']||[]).filter(s=>s!==null).length >= maxSlots ? 'ph-check-circle' : 'ph-clock'}"></i></div>
                         <div style="font-size:1.1rem; font-weight:700; color:${j2Sum > 0 ? 'var(--primary)' : 'var(--text-muted)'}">${j2Sum > 0 ? j2Sum.toFixed(1) : '--'}</div>
                     </div>
-                    <div style="background:var(--bg-app); padding:0.5rem; border-radius:4px; border-bottom:2px solid ${j3Sum > 0 ? 'var(--primary)' : 'var(--border)'}; text-align:center;">
+                    <div style="background:var(--bg-app); padding:0.5rem; border-radius:4px; border-bottom:2px solid ${(judging['Juez 3']||[]).filter(s=>s!==null).length >= maxSlots ? 'var(--primary)' : 'var(--border)'}; text-align:center;">
                         <div style="font-size:0.65rem; color:var(--text-muted); margin-bottom:0.2rem;">JUEZ 3</div>
+                        <div style="font-size:0.75rem; color:${(judging['Juez 3']||[]).filter(s=>s!==null).length >= maxSlots ? 'var(--primary)' : 'var(--text-muted)'}">${(judging['Juez 3']||[]).filter(s=>s!==null).length} / ${maxSlots} <i class="ph-fill ${(judging['Juez 3']||[]).filter(s=>s!==null).length >= maxSlots ? 'ph-check-circle' : 'ph-clock'}"></i></div>
                         <div style="font-size:1.1rem; font-weight:700; color:${j3Sum > 0 ? 'var(--primary)' : 'var(--text-muted)'}">${j3Sum > 0 ? j3Sum.toFixed(1) : '--'}</div>
                     </div>
                 </div>
@@ -1332,9 +1365,14 @@ function renderActiveBattle() {
                 <div style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); padding:0.8rem; border-radius:6px; border:2px solid ${showGlobal ? 'var(--accent)' : 'var(--border)'}; ${(battle.status !== 'completed' && !showGlobal) ? 'filter: blur(3px); opacity:0.4;' : ''}">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:1px;">TOTAL GLOBAL</span>
-                        <strong style="color:var(--accent); font-size:1.5rem;">${(battle.status === 'completed' || showGlobal) ? ((j1Sum + j2Sum + j3Sum) / 3).toFixed(2) : '--.--'}</strong>
+                        <strong style="color:var(--accent); font-size:1.5rem;">${(battle.status === 'completed' || showGlobal) ? (judging.bestSlideBonus ? (((j1Sum + j2Sum + j3Sum) / 3) + 0.01).toFixed(2) : ((j1Sum + j2Sum + j3Sum) / 3).toFixed(2)) : '--.--'}</strong>
                     </div>
                 </div>
+
+                ${(myRole === 'Juez 1' && battle.status !== 'completed') ? 
+                    `<button onclick="window.socket.emit('toggle-best-slide', { battleId: '${currentBattleId}', skaterId: '${sInfo.id}' })" style="margin-top:0.8rem; width:100%; padding:0.4rem; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:bold; transition:0.2s; background:${judging.bestSlideBonus ? 'var(--accent)' : 'transparent'}; border:1px solid var(--accent); color:${judging.bestSlideBonus ? 'var(--bg-app)' : 'var(--accent)'};"><i class="ph-fill ph-star"></i> ${judging.bestSlideBonus ? 'Best Slide Otorgado (+0.01)' : 'Dar Best Slide (Desempate)'}</button>` :
+                    (judging.bestSlideBonus ? `<div style="margin-top:0.8rem; text-align:center; color:var(--accent); font-size:0.75rem; font-weight:bold;"><i class="ph-fill ph-star"></i> Ganador Best Slide (+0.01)</div>` : '')
+                }
 
                 ${battle.status === 'completed' ? (() => {
                 // Ordenar skaters por puntaje para determinar la posición
@@ -1390,17 +1428,31 @@ function renderActiveBattle() {
                 const familyCounts = { 'INT': 0, 'EXT': 0, 'FR': 0, 'ESP': 0, 'LAT': 0 };
                 const allTricks = window.db.getTricks();
 
+                const countFamily = (trickId) => {
+                    const trk = allTricks.find(t => t.id === trickId);
+                    if (trk) {
+                        const fam = trk.family || "";
+                        if (fam.includes('F1')) familyCounts['INT']++;
+                        else if (fam.includes('F2')) familyCounts['EXT']++;
+                        else if (fam.includes('F3')) familyCounts['FR']++;
+                        else if (fam.includes('F4')) familyCounts['ESP']++;
+                        else if (fam.includes('F5')) familyCounts['LAT']++;
+                    }
+                };
+
                 roleSlots.forEach(s => {
                     if (s && !s.isFail) {
-                        const sName = s.name.trim().toLowerCase();
-                        const trk = allTricks.find(t => t.name.trim().toLowerCase() === sName);
-                        if (trk) {
-                            const fam = trk.family || "";
-                            if (fam.includes('F1')) familyCounts['INT']++;
-                            else if (fam.includes('F2')) familyCounts['EXT']++;
-                            else if (fam.includes('F3')) familyCounts['FR']++;
-                            else if (fam.includes('F4')) familyCounts['ESP']++;
-                            else if (fam.includes('F5')) familyCounts['LAT']++;
+                        if (s.isCombo) {
+                            if (s.trickId) countFamily(s.trickId);
+                            if (s.trickId2) countFamily(s.trickId2);
+                        } else {
+                            if (s.trickId) countFamily(s.trickId);
+                            else {
+                                // Legacy fallback for backup records missing IDs
+                                const sName = (s.name || "").trim().toLowerCase();
+                                const trkByName = allTricks.find(t => t.name.trim().toLowerCase() === sName);
+                                if (trkByName) countFamily(trkByName.id);
+                            }
                         }
                     }
                 });
@@ -1450,7 +1502,8 @@ function renderActiveBattle() {
                         const isDropped = !isCounted;
 
                         const adj = slide.adjustment || 0;
-                        const dist = slide.distance || 2.5;
+                        const dist = slide.distance || 2.0;
+                        const dist2 = slide.distance2 || 2.0;
                         let badgeColor = isDropped ? 'var(--text-muted)' : (isFail ? 'var(--danger)' : (adj >= 0 ? 'var(--accent)' : 'var(--primary)'));
                         let adjText = isFail ? 'Falla (0.0)' : (adj === 0 ? '' : (adj > 0 ? `+${adj.toFixed(1)}` : adj.toFixed(1)));
 
@@ -1484,7 +1537,7 @@ function renderActiveBattle() {
                                     </div>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.65rem; color:var(--text-muted); margin-top:0.2rem;">
-                                    <span>${dist.toFixed(1)}m | ${stopBonusText || 'No Stop'}</span>
+                                    <span>${slide.isCombo ? dist.toFixed(1) + 'm + ' + dist2.toFixed(1) + 'm' : dist.toFixed(1) + 'm'} | ${stopBonusText || 'No Stop'}</span>
                                     <span>${adjText ? 'Adj: ' + adjText : ''}</span>
                                 </div>
                             </div>
@@ -1584,7 +1637,7 @@ function renderBrackets() {
             sortedSkaters.forEach((bs, idx) => {
                 const sInfo = db.skaters.find(s => s.id == bs.skaterId);
                 const isQualified = bs.qualified === true;
-
+                
                 const rankLabel = isFinal
                     ? (idx === 0 ? '&#129351; ORO' : idx === 1 ? '&#129352; PLATA' : idx === 2 ? '&#129353; BRONCE' : idx === 3 ? '4.' : '')
                     : '';
@@ -1667,7 +1720,7 @@ function exportTournamentCSV() {
         const phaseMap = { 'Preliminar': 1, 'Heat': 1, 'Cuartos': 2, 'Semifinal': 3, 'Final': 4 };
 
         if (skaterBattles.length > 0) {
-            const lastBattle = skaterBattles.reduce((last, b) =>
+            const lastBattle = skaterBattles.reduce((last, b) => 
                 (phaseMap[b.phase] || 0) > (phaseMap[last.phase] || 0) ? b : last, skaterBattles[0]);
             const result = lastBattle.skaters.find(s => s.skaterId === sk.id);
 
@@ -1834,7 +1887,7 @@ function exportTournamentCSV() {
             currentCat = sk.categoryName;
             html += `<tr class="cat-row"><td colspan="11">${currentCat}</td></tr>`;
         }
-
+        
         const posClass = sk.finalPosition === 1 ? 'pos-1' : sk.finalPosition === 2 ? 'pos-2' : sk.finalPosition === 3 ? 'pos-3' : 'pos-other';
         const posLabel = `${sk.finalPosition}\u00b0`;
 
@@ -1882,7 +1935,7 @@ function showPodium(battleId) {
 
 function renderPodiumHTML(podium) {
     if (!podium) return '';
-
+    
     const getCard = (sk, label, color, icon) => {
         if (!sk || !sk.info) return '';
         return `
@@ -1931,10 +1984,10 @@ function showToast(message, isError = false) {
 
     const toast = document.createElement('div');
     toast.className = `toast ${isError ? 'error' : ''}`;
-
+    
     // Icono según tipo
     const icon = isError ? 'warning-circle' : 'check-circle';
-
+    
     toast.innerHTML = `
         <div style="display:flex; align-items:center; gap:0.8rem;">
             <i class="ph-fill ph-${icon}" style="font-size:1.2rem;"></i>
@@ -1952,9 +2005,6 @@ function showToast(message, isError = false) {
         setTimeout(() => toast.remove(), 500);
     }, 4000);
 }
-
-// Exportar al objeto window para que sea accesible desde cualquier scope
-window.showToast = showToast;
 
 document.addEventListener('DOMContentLoaded', init);
 

@@ -309,8 +309,14 @@ class SlideDB {
         } else {
             const stopBonus = this.getStopBonus(trickPerformed);
             const adjustment = parseFloat(trickPerformed.adjustment) || 0;
-            const distance = parseFloat(trickPerformed.distance) || 2.5;
-            const distanceBonus = Math.max(0, Math.floor((distance - 2.5) / 0.5) * 1);
+            const distance = parseFloat(trickPerformed.distance) || 2.0;
+            const distanceBonus = Math.max(0, Math.floor((distance - 2.0) / 0.5) * 1);
+            
+            let distance2Bonus = 0;
+            if (trickPerformed.isCombo) {
+                const distance2 = parseFloat(trickPerformed.distance2) || 2.0;
+                distance2Bonus = Math.max(0, Math.floor((distance2 - 2.0) / 0.5) * 1);
+            }
             
             // Lógica de COMBO (Regla 9.5.2.2)
             let baseScore = trickPerformed.baseScore || 0;
@@ -319,10 +325,11 @@ class SlideDB {
                 baseScore = Math.round((baseScore + trickPerformed.baseScore2) * 1.1 * 100) / 100;
             }
 
-            const finalScore = baseScore + adjustment + distanceBonus + stopBonus;
+            const finalScore = baseScore + adjustment + distanceBonus + distance2Bonus + stopBonus;
 
             trickPerformed.stopBonus = stopBonus;
             trickPerformed.distanceBonus = distanceBonus;
+            trickPerformed.distance2Bonus = distance2Bonus;
             trickPerformed.finalScore = Math.max(0, Math.round(finalScore * 100) / 100);
         }
 
@@ -478,7 +485,37 @@ class SlideDB {
         const j1 = this.calculateJudgeScore(judging, 'Juez 1', phase);
         const j2 = this.calculateJudgeScore(judging, 'Juez 2', phase);
         const j3 = this.calculateJudgeScore(judging, 'Juez 3', phase);
-        return Math.round(((j1 + j2 + j3) / 3) * 100) / 100;
+        let total = Math.round(((j1 + j2 + j3) / 3) * 100) / 100;
+        if (judging.bestSlideBonus) {
+            total += 0.01;
+        }
+        return total;
+    }
+
+    async toggleBestSlide(battleId, skaterId) {
+        const res = await this.pool.query(
+            `SELECT bs.judging, b.phase FROM battle_skaters bs
+             JOIN battles b ON b.id = bs.battle_id
+             WHERE bs.battle_id = $1 AND bs.skater_id = $2`,
+            [battleId, skaterId]
+        );
+
+        if (res.rows.length === 0) return { success: false };
+
+        const row = res.rows[0];
+        let judging = row.judging;
+        const phase = row.phase;
+
+        judging.bestSlideBonus = !judging.bestSlideBonus;
+        const totalScore = this.calculateTotalScore(judging, phase);
+
+        await this.pool.query(
+            `UPDATE battle_skaters SET judging = $1, total_score = $2
+             WHERE battle_id = $3 AND skater_id = $4`,
+            [JSON.stringify(judging), totalScore, battleId, skaterId]
+        );
+
+        return { success: true };
     }
 
     async close() {

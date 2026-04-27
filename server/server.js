@@ -5,7 +5,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 const pdf = require('html-pdf-node');
-const SliderDB = require('./db');
+const SliderDB = process.env.DATABASE_URL ? require('./db') : require('./db_json');
 
 const app = express();
 
@@ -213,6 +213,11 @@ io.on('connection', async (socket) => {
 
     // --- Tricks ---
     socket.on('save-trick', async ({ battleId, skaterId, trickPerformed, role, slotIndex }) => {
+        // Validar que el juez que envía es quien dice ser, o es el Admin
+        if (currentRole !== role && currentRole !== 'Juez 1') {
+            console.warn(`[AUDIT] Intento de save-trick ilegal - Autor: ${currentRole}, Objetivo: ${role}`);
+            return;
+        }
         const result = await db.saveTrick(battleId, skaterId, trickPerformed, role, slotIndex);
         if (result.success) {
             await broadcastUpdate();
@@ -220,8 +225,20 @@ io.on('connection', async (socket) => {
     });
 
     socket.on('delete-trick', async ({ battleId, skaterId, slotIndex, role }) => {
+        if (currentRole !== role && currentRole !== 'Juez 1') {
+            console.warn(`[AUDIT] Intento de delete-trick ilegal - Autor: ${currentRole}, Objetivo: ${role}`);
+            return;
+        }
         const result = await db.deleteTrick(battleId, skaterId, slotIndex, role);
         if (result) {
+            await broadcastUpdate();
+        }
+    });
+
+    socket.on('toggle-best-slide', async ({ battleId, skaterId }) => {
+        if (!requireAuth('Juez 1', 'desempatar best slide')) return;
+        const result = await db.toggleBestSlide(battleId, skaterId);
+        if (result.success) {
             await broadcastUpdate();
         }
     });
@@ -248,6 +265,7 @@ io.on('connection', async (socket) => {
     });
 
     socket.on('admin-focus-battle', (battleId) => {
+        if (currentRole !== 'Juez 1') return;
         socket.broadcast.emit('focus-battle', battleId);
     });
 
@@ -278,33 +296,7 @@ io.on('connection', async (socket) => {
 
 const PORT = process.env.PORT || 3005;
 
-// Validate DATABASE_URL before starting
-if (!process.env.DATABASE_URL) {
-    console.error('═══════════════════════════════════════════════════════');
-    console.error('ERROR: DATABASE_URL environment variable is not set.');
-    console.error('═══════════════════════════════════════════════════════');
-    console.error('');
-    console.error('The server requires a PostgreSQL connection string to run.');
-    console.error('');
-    console.error('How to get DATABASE_URL from Supabase:');
-    console.error('  1. Go to https://supabase.com/dashboard');
-    console.error('  2. Select your project (slide-battle)');
-    console.error('  3. Go to Project Settings > Database');
-    console.error('  4. Find "Connection string" and copy the URI');
-    console.error('  5. Format should be:');
-    console.error('     postgresql://postgres:your_password@db.xxx.supabase.co:5432/postgres');
-    console.error('');
-    console.error('How to configure in Render:');
-    console.error('  1. Go to https://dashboard.render.com');
-    console.error('  2. Select your "slide" web service');
-    console.error('  3. Click on "Environment" in the sidebar');
-    console.error('  4. Click "Add Environment Variable"');
-    console.error('  5. Add DATABASE_URL with your Supabase connection string');
-    console.error('  6. Click "Save Changes" - the service will redeploy automatically');
-    console.error('');
-    console.error('═══════════════════════════════════════════════════════');
-    process.exit(1);
-}
+// --- Start Server ---
 
 (async () => {
     try {

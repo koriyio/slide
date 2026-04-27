@@ -397,7 +397,7 @@ class SlideStorage {
         ];
     }
 
-    saveTrick(battleId, skaterId, trickId, adjustment, slotIndex, isFail = false, distance = 2.5, stopLevel = 0, isCombo = false, trickId2 = '') {
+    saveTrick(battleId, skaterId, trickId, adjustment, slotIndex, isFail = false, distance = 2.0, stopLevel = 0, isCombo = false, trickId2 = '', distance2 = 2.0) {
         if (!this.currentRole) return false;
 
         const allTricks = this.getTricks();
@@ -417,7 +417,8 @@ class SlideStorage {
             family: trick ? trick.family : '',
             baseScore: trick ? trick.baseScore : 0,
             adjustment: parseFloat(adjustment) || 0,
-            distance: parseFloat(distance) || 2.5,
+            distance: parseFloat(distance) || 2.0,
+            distance2: parseFloat(distance2) || 2.0,
             stopLevel: parseInt(stopLevel) || 0,
             isFail: isFail,
             isCombo: isCombo,

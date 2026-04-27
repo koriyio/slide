@@ -162,17 +162,24 @@ class JsonDB {
             const stopBonuses = { 0: 0, 1: 2.0, 2: 4.0, 3: 6.0 };
             const stopBonus = stopBonuses[trickPerformed.stopLevel] || 0;
             const adjustment = parseFloat(trickPerformed.adjustment) || 0;
-            const distance = parseFloat(trickPerformed.distance) || 2.5;
-            const distanceBonus = Math.max(0, Math.floor((distance - 2.5) / 0.5) * 1);
+            const distance = parseFloat(trickPerformed.distance) || 2.0;
+            const distanceBonus = Math.max(0, Math.floor((distance - 2.0) / 0.5) * 1);
+            
+            let distance2Bonus = 0;
+            if (trickPerformed.isCombo) {
+                const distance2 = parseFloat(trickPerformed.distance2) || 2.0;
+                distance2Bonus = Math.max(0, Math.floor((distance2 - 2.0) / 0.5) * 1);
+            }
             
             let baseScore = trickPerformed.baseScore || 0;
             if (trickPerformed.isCombo && trickPerformed.baseScore2) {
                 baseScore = Math.round((baseScore + trickPerformed.baseScore2) * 1.1 * 100) / 100;
             }
 
-            const finalScore = baseScore + adjustment + distanceBonus + stopBonus;
+            const finalScore = baseScore + adjustment + distanceBonus + distance2Bonus + stopBonus;
             trickPerformed.stopBonus = stopBonus;
             trickPerformed.distanceBonus = distanceBonus;
+            trickPerformed.distance2Bonus = distance2Bonus;
             trickPerformed.finalScore = Math.max(0, Math.round(finalScore * 100) / 100);
         }
 
@@ -274,7 +281,30 @@ class JsonDB {
         const j1 = calculateJudgeScore('Juez 1');
         const j2 = calculateJudgeScore('Juez 2');
         const j3 = calculateJudgeScore('Juez 3');
-        return Math.round(((j1 + j2 + j3) / 3) * 100) / 100;
+        let total = Math.round(((j1 + j2 + j3) / 3) * 100) / 100;
+        if (judging.bestSlideBonus) {
+            total += 0.01;
+        }
+        return total;
+    }
+
+    async toggleBestSlide(battleId, skaterId) {
+        return this._withLock(async () => {
+            const db = await this.getDB();
+            const battle = db.battles.find(b => b.id === battleId);
+            if (!battle) return { success: false };
+
+            const skater = battle.skaters.find(s => String(s.skaterId) === String(skaterId));
+            if (!skater) return { success: false };
+
+            if (!skater.judging) skater.judging = {};
+            skater.judging.bestSlideBonus = !skater.judging.bestSlideBonus;
+            
+            skater.totalScore = this.calculateTotalScore(skater.judging, battle.phase);
+            
+            await this.saveDB(db);
+            return { success: true };
+        });
     }
 }
 
