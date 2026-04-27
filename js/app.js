@@ -1370,7 +1370,7 @@ function renderActiveBattle() {
                 </div>
 
                 ${(myRole === 'Juez 1' && battle.status !== 'completed') ? 
-                    `<button onclick="window.socket.emit('toggle-best-slide', { battleId: '${currentBattleId}', skaterId: '${sInfo.id}' })" style="margin-top:0.8rem; width:100%; padding:0.4rem; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:bold; transition:0.2s; background:${judging.bestSlideBonus ? 'var(--accent)' : 'transparent'}; border:1px solid var(--accent); color:${judging.bestSlideBonus ? 'var(--bg-app)' : 'var(--accent)'};"><i class="ph-fill ph-star"></i> ${judging.bestSlideBonus ? 'Best Slide Otorgado (+0.01)' : 'Dar Best Slide (Desempate)'}</button>` :
+                    `<button onclick="window.db.socket.emit('toggle-best-slide', { battleId: '${currentBattleId}', skaterId: '${sInfo.id}' })" style="margin-top:0.8rem; width:100%; padding:0.4rem; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:bold; transition:0.2s; background:${judging.bestSlideBonus ? 'var(--accent)' : 'transparent'}; border:1px solid var(--accent); color:${judging.bestSlideBonus ? 'var(--bg-app)' : 'var(--accent)'};"><i class="ph-fill ph-star"></i> ${judging.bestSlideBonus ? 'Best Slide Otorgado (+0.01)' : 'Dar Best Slide (Desempate)'}</button>` :
                     (judging.bestSlideBonus ? `<div style="margin-top:0.8rem; text-align:center; color:var(--accent); font-size:0.75rem; font-weight:bold;"><i class="ph-fill ph-star"></i> Ganador Best Slide (+0.01)</div>` : '')
                 }
 
