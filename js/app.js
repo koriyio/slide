@@ -426,7 +426,7 @@ function setupEventListeners() {
     };
 
     ui.btnFinishBattle.onclick = () => {
-        if (!confirm('\u00bfEst\u00e1s seguro de finalizar esta batalla? Esto calcular\u00e1 los ganadores y bloquear\u00e1 la edici\u00f3n.')) return;
+        if (!confirm('\u00bfEst\u00e1s seguro de finalizar esta competencia? Esto calcular\u00e1 los ganadores y bloquear\u00e1 la edici\u00f3n.')) return;
 
         window.db.finishBattle(currentBattleId, (res) => {
             if (res && res.success) {
@@ -442,13 +442,13 @@ function setupEventListeners() {
                 if (battle && battle.phase === 'Final') {
                     setTimeout(() => {
                         launchConfetti();
-                        showToast('\u00a1Batalla finalizada! \ud83c\udf89 \u00a1Tenemos un ganador!');
+                        showToast('\u00a1Competencia finalizada! \ud83c\udf89 \u00a1Tenemos un ganador!');
                     }, 500);
                 } else {
-                    showToast('Batalla finalizada, ganadores calculados');
+                    showToast('Competencia finalizada, ganadores calculados');
                 }
             } else {
-                showToast(res?.message || 'Error al finalizar batalla', true);
+                showToast(res?.message || 'Error al finalizar competencia', true);
             }
         });
     };
@@ -879,7 +879,7 @@ function renderBattles() {
                 // Generaciión autom├ítica si hay suficientes
                 ui.battlesContainer.innerHTML = `
                     <div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">
-                        <p>No hay batallas generadas para esta categoría, pero hay ${skatersInCat.length} competidores listos.</p>
+                        <p>No hay competencias generadas para esta categoría, pero hay ${skatersInCat.length} competidores listos.</p>
                         <button class="btn-primary" onclick="generateHeats('${catId}')" style="margin-top:1rem;">Generar Grupos Ahora</button>
                     </div>`;
                 return;
@@ -894,7 +894,7 @@ function renderBattles() {
     }
 
     if (battles.length === 0) {
-        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas generadas aún. Selecciona una categoría para empezar.</div>';
+        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay competencias generadas aún. Selecciona una categoría para empezar.</div>';
         return;
     }
 
@@ -1566,7 +1566,7 @@ function renderBrackets() {
     const battles = window.db.getBattlesByCategory(catId);
 
     if (battles.length === 0) {
-        ui.bracketContainer.innerHTML = '<div style="padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay batallas en esta categoría aún.</div>';
+        ui.bracketContainer.innerHTML = '<div style="padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay competencias en esta categoría aún.</div>';
         return;
     }
 
