@@ -287,8 +287,11 @@
                             <p id="active-battle-subtitle">Heat X - Categoría</p>
                         </div>
                     </div>
-                    <button id="btn-finish-battle" class="btn-primary" style="background:var(--accent);"><i
-                            class="ph ph-flag-checkered"></i> Finalizar Competencia</button>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button id="btn-best-slide" class="btn-secondary" onclick="openBestSlideModal()" style="display:none;"><i class="ph-fill ph-star"></i> Votación Best Slide</button>
+                        <button id="btn-finish-battle" class="btn-primary" style="background:var(--accent);"><i
+                                class="ph ph-flag-checkered"></i> Finalizar Competencia</button>
+                    </div>
                 </header>
 
                 <div id="active-battle-grid"
