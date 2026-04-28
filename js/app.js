@@ -1252,6 +1252,7 @@ function renderActiveBattle() {
 
     if (battle.status === 'completed') {
         ui.btnFinishBattle.style.display = 'none';
+        document.getElementById('btn-best-slide').style.display = 'none';
         document.getElementById('active-battle-title').innerText = `RESULTADOS FINALES - ${battle.phase} ${battle.heatNumber}`;
 
         // Lanzar confetti si es una Final
@@ -1259,9 +1260,49 @@ function renderActiveBattle() {
             launchConfetti();
         }
     } else {
-        // Solo el Juez 1 (Admin) puede ver el botión de finalizar
+        // Solo el Juez 1 (Admin) puede ver el botión de finalizar y best slide
         const role = window.db.currentRole;
         ui.btnFinishBattle.style.display = (role === 'Juez 1') ? 'inline-flex' : 'none';
+        
+        // Show Best Slide only if we have a tie (Admin only)
+        if (role === 'Juez 1') {
+            let hasTie = false;
+            // Solo comprobar empates para habilitar el botón Best Slide
+            const scoreGroups = {};
+            battle.skaters.forEach(bs => {
+                const sInfo = db.skaters.find(s => s.id == bs.skaterId);
+                if (!sInfo) return;
+                
+                const judging = bs.judging || { 'Juez 1': [], 'Juez 2': [], 'Juez 3': [] };
+                
+                const getSum = (r) => {
+                    let scores = (judging[r] || []).map(t => t ? t.finalScore : 0);
+                    scores.sort((a, b) => b - a);
+                    const maxToCount = battle.phase === 'Final' ? 4 : 3;
+                    return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
+                };
+
+                const j1Sum = getSum('Juez 1');
+                const j2Sum = getSum('Juez 2');
+                const j3Sum = getSum('Juez 3');
+                const baseScore = ((j1Sum + j2Sum + j3Sum) / 3).toFixed(2);
+                
+                if (!scoreGroups[baseScore]) scoreGroups[baseScore] = 0;
+                scoreGroups[baseScore]++;
+            });
+            
+            // Si algún puntaje se repite, hay un posible empate
+            for (const key in scoreGroups) {
+                if (scoreGroups[key] > 1 && parseFloat(key) > 0) {
+                    hasTie = true;
+                    break;
+                }
+            }
+            
+            document.getElementById('btn-best-slide').style.display = hasTie ? 'inline-flex' : 'none';
+        } else {
+            document.getElementById('btn-best-slide').style.display = 'none';
+        }
     }
 
     ui.activeBattleGrid.innerHTML = '';
@@ -1369,8 +1410,8 @@ function renderActiveBattle() {
                     </div>
                 </div>
 
-                ${(myRole === 'Juez 1' && battle.status !== 'completed') ? 
-                    `<button onclick="window.db.socket.emit('toggle-best-slide', { battleId: '${currentBattleId}', skaterId: '${sInfo.id}' })" style="margin-top:0.8rem; width:100%; padding:0.4rem; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:bold; transition:0.2s; background:${judging.bestSlideBonus ? 'var(--accent)' : 'transparent'}; border:1px solid var(--accent); color:${judging.bestSlideBonus ? 'var(--bg-app)' : 'var(--accent)'};"><i class="ph-fill ph-star"></i> ${judging.bestSlideBonus ? 'Best Slide Otorgado (+0.01)' : 'Dar Best Slide (Desempate)'}</button>` :
+                ${(myRole === 'Juez 1' && battle.status !== 'completed' && judging.bestSlideBonus) ? 
+                    `<button onclick="window.db.socket.emit('toggle-best-slide', { battleId: '${currentBattleId}', skaterId: '${sInfo.id}' })" style="margin-top:0.8rem; width:100%; padding:0.4rem; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:bold; transition:0.2s; background:var(--accent); border:1px solid var(--accent); color:var(--bg-app);"><i class="ph-fill ph-star"></i> Best Slide Otorgado (+0.01) [Quitar]</button>` :
                     (judging.bestSlideBonus ? `<div style="margin-top:0.8rem; text-align:center; color:var(--accent); font-size:0.75rem; font-weight:bold;"><i class="ph-fill ph-star"></i> Ganador Best Slide (+0.01)</div>` : '')
                 }
 
@@ -1699,6 +1740,60 @@ window.deleteRecordedTrick = (skaterId, slotIdx) => {
         }
     }
 }
+
+// --- BEST SLIDE VOTING ---
+window.openBestSlideModal = () => {
+    const db = window.db.getDB();
+    const battle = db.battles.find(b => b.id == currentBattleId);
+    if (!battle) return;
+
+    let optionsHTML = '<option value="">-- Abstención --</option>';
+    battle.skaters.forEach(bs => {
+        const sInfo = db.skaters.find(s => s.id == bs.skaterId);
+        if (sInfo) {
+            optionsHTML += `<option value="${sInfo.id}">${sInfo.firstName.toUpperCase()} ${sInfo.lastName.toUpperCase()}</option>`;
+        }
+    });
+
+    document.getElementById('best-slide-vote-1').innerHTML = optionsHTML;
+    document.getElementById('best-slide-vote-2').innerHTML = optionsHTML;
+    document.getElementById('best-slide-vote-3').innerHTML = optionsHTML;
+
+    document.getElementById('modal-best-slide').classList.remove('hidden');
+};
+
+window.submitBestSlide = () => {
+    const v1 = document.getElementById('best-slide-vote-1').value;
+    const v2 = document.getElementById('best-slide-vote-2').value;
+    const v3 = document.getElementById('best-slide-vote-3').value;
+
+    const votes = {};
+    if (v1) votes[v1] = (votes[v1] || 0) + 1;
+    if (v2) votes[v2] = (votes[v2] || 0) + 1;
+    if (v3) votes[v3] = (votes[v3] || 0) + 1;
+
+    let winnerId = null;
+    let maxVotes = 0;
+
+    for (const [id, count] of Object.entries(votes)) {
+        if (count > maxVotes) {
+            maxVotes = count;
+            winnerId = id;
+        } else if (count === maxVotes) {
+            winnerId = null; // Empate en votos, nadie gana automáticamente, requiere desempate manual o Juez Principal
+        }
+    }
+
+    if (!winnerId) {
+        showToast('Empate en los votos o no hay mayoría clara. Por favor, reevalúe.', true);
+        return;
+    }
+
+    // Toggle the best slide directly
+    window.db.socket.emit('toggle-best-slide', { battleId: currentBattleId, skaterId: winnerId });
+    document.getElementById('modal-best-slide').classList.add('hidden');
+    showToast('Best Slide otorgado correctamente (+0.01)');
+};
 
 function exportTournamentCSV() {
     const db = window.db.getDB();
