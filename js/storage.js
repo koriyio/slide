@@ -23,7 +23,15 @@ class SlideStorage {
                     if (window.populateTricks) window.populateTricks();
                     renderDashboard();
                     renderSkaters();
-                } catch (e) { }
+                    renderBattles();
+                    // MEJORA: Si estamos viendo una batalla, re-renderizarla al recibir datos
+                    const viewActive = document.getElementById('view-active-battle');
+                    if (viewActive && viewActive.classList.contains('active')) {
+                        if (window.renderActiveBattle) window.renderActiveBattle();
+                    }
+                } catch (e) {
+                    console.error("[STORAGE] Error en re-render inicial:", e);
+                }
             }
         });
 

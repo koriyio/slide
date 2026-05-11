@@ -1337,9 +1337,27 @@ function renderActiveBattle() {
         // Continuar con el renderizado normal para mostrar todos los resultados...
     }
 
+    console.log(`[DEBUG] Renderizando batalla: ${currentBattleId}`);
+    console.log(`[DEBUG] Skaters en DB:`, db.skaters.length);
+    console.log(`[DEBUG] Skaters en Batalla:`, battle.skaters.length);
+
     battle.skaters.forEach(bs => {
-        const sInfo = db.skaters.find(s => s.id == bs.skaterId);
-        if (!sInfo) return;
+        const sInfo = db.skaters.find(s => String(s.id) === String(bs.skaterId));
+        
+        if (!sInfo) {
+            console.error(`[DEBUG] Patinador no encontrado! ID buscado: ${bs.skaterId}`);
+            // Mostrar tarjeta de error en lugar de saltar
+            const errorCol = document.createElement('div');
+            errorCol.style.cssText = 'background:rgba(239, 68, 68, 0.1); border:1px dashed var(--danger); border-radius:var(--radius-md); padding:1.5rem; text-align:center;';
+            errorCol.innerHTML = `
+                <i class="ph ph-warning-circle" style="color:var(--danger); font-size:2rem; margin-bottom:0.5rem;"></i>
+                <div style="font-weight:bold; color:var(--danger);">Patinador no encontrado</div>
+                <div style="font-size:0.7rem; opacity:0.7; margin-top:0.3rem;">ID: ${bs.skaterId}</div>
+                <div style="font-size:0.6rem; margin-top:1rem; color:var(--text-muted);">Verifica que el patinador exista en la pestaña "Competidores"</div>
+            `;
+            ui.activeBattleGrid.appendChild(errorCol);
+            return;
+        }
 
         // Din├ímico: 5 slots en la Final, 4 en el resto
         const maxSlots = battle.phase === 'Final' ? 5 : 4;

@@ -117,12 +117,23 @@ class SlideDB {
 
     // --- Get full DB (format used by frontend) ---
     async getFullDB() {
-        try {
-            const categories = await this.pool.query('SELECT id, name FROM categories');
-            const skaters = await this.pool.query('SELECT id, first_name, last_name, category_id, seed_number, external_id, nationality FROM skaters');
-            const battles = await this.pool.query('SELECT id, category_id, phase, heat_number, status FROM battles ORDER BY category_id, phase, heat_number');
+        let categories = [];
+        let skatersMapped = [];
+        let battlesMapped = [];
 
-            const skatersMapped = skaters.rows.map(r => ({
+        // 1. Obtener Categorías
+        try {
+            const res = await this.pool.query('SELECT id, name FROM categories');
+            categories = res.rows;
+            console.log(`[DB] getFullDB: ${categories.length} categorías cargadas.`);
+        } catch (err) {
+            console.error('[DB] Error cargando categorías:', err.message);
+        }
+
+        // 2. Obtener Patinadores
+        try {
+            const res = await this.pool.query('SELECT id, first_name, last_name, category_id, seed_number, external_id, nationality FROM skaters');
+            skatersMapped = res.rows.map(r => ({
                 id: r.id,
                 firstName: r.first_name,
                 lastName: r.last_name,
@@ -131,24 +142,43 @@ class SlideDB {
                 externalId: r.external_id,
                 nationality: r.nationality
             }));
-
-            const battlesMapped = await Promise.all(battles.rows.map(async (b) => {
-                const battleSkaters = await this.getBattleSkaters(b.id);
-                return {
-                    id: b.id,
-                    categoryId: b.category_id,
-                    phase: b.phase,
-                    heatNumber: b.heat_number,
-                    status: b.status,
-                    skaters: battleSkaters
-                };
-            }));
-
-            return { skaters: skatersMapped, battles: battlesMapped, categories: categories.rows };
+            console.log(`[DB] getFullDB: ${skatersMapped.length} patinadores cargados.`);
         } catch (err) {
-            console.error('[DB] Error en getFullDB:', err.message);
-            return { skaters: [], battles: [], categories: [] };
+            console.error('[DB] Error cargando patinadores:', err.message);
         }
+
+        // 3. Obtener Batallas
+        try {
+            const res = await this.pool.query('SELECT id, category_id, phase, heat_number, status FROM battles ORDER BY category_id, phase, heat_number');
+            battlesMapped = await Promise.all(res.rows.map(async (b) => {
+                try {
+                    const battleSkaters = await this.getBattleSkaters(b.id);
+                    return {
+                        id: b.id,
+                        categoryId: b.category_id,
+                        phase: b.phase,
+                        heatNumber: b.heat_number,
+                        status: b.status,
+                        skaters: battleSkaters
+                    };
+                } catch (bErr) {
+                    console.error(`[DB] Error cargando skaters de batalla ${b.id}:`, bErr.message);
+                    return {
+                        id: b.id,
+                        categoryId: b.category_id,
+                        phase: b.phase,
+                        heatNumber: b.heat_number,
+                        status: b.status,
+                        skaters: []
+                    };
+                }
+            }));
+            console.log(`[DB] getFullDB: ${battlesMapped.length} batallas cargadas.`);
+        } catch (err) {
+            console.error('[DB] Error cargando batallas:', err.message);
+        }
+
+        return { skaters: skatersMapped, battles: battlesMapped, categories: categories };
     }
 
     async getBattleSkaters(battleId) {
