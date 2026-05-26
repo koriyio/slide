@@ -14,10 +14,12 @@ class MockSlideDB {
         let comboBonus = 0;
 
         if (isCombo && trick2Base) {
-            // (Base1 + Base2) * 1.10
-            const rawBase = baseScore + trick2Base;
-            baseScore = Math.round((rawBase) * 1.1 * 100) / 100;
-            comboBonus = Math.round((baseScore - rawBase) * 100) / 100;
+            const base1 = baseScore;
+            const base2 = trick2Base;
+            const maxBase = Math.max(base1, base2);
+            const minBase = Math.min(base1, base2);
+            baseScore = Math.round((maxBase + (minBase * 0.25)) * 1.05 * 100) / 100;
+            comboBonus = Math.round((baseScore - (base1 + base2)) * 100) / 100;
         }
 
         const stopBonus = this.stopBonuses[stopLevel] || 0;

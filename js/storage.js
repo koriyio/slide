@@ -159,8 +159,36 @@ class SlideStorage {
         return true;
     }
 
+    deleteBattle(battleId, callback) {
+        if (this.localData.battles) {
+            this.localData.battles = this.localData.battles.filter(b => b.id != battleId);
+        }
+        this.socket.emit('delete-battle', battleId, (response) => {
+            if (callback) callback(response);
+        });
+        return true;
+    }
+
+    deleteBattlesByCategory(categoryId, callback) {
+        if (this.localData.battles) {
+            this.localData.battles = this.localData.battles.filter(b => b.categoryId != categoryId);
+        }
+        this.socket.emit('delete-battles-by-category', categoryId, (response) => {
+            if (callback) callback(response);
+        });
+        return true;
+    }
+
     importSkaters(arr) {
         this.socket.emit('import-skaters', arr);
+    }
+
+    swapSkaters(skaterId1, battleId1, skaterId2, battleId2) {
+        this.socket.emit('swap-skaters', { skaterId1, battleId1, skaterId2, battleId2 });
+    }
+
+    moveSkater(skaterId, fromBattleId, toBattleId) {
+        this.socket.emit('move-skater', { skaterId, fromBattleId, toBattleId });
     }
 
     // --- CATEGORIES ---

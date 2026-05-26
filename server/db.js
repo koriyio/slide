@@ -308,6 +308,22 @@ class SlideDB {
         await this.addBattles(newBattles);
     }
 
+    async deleteBattle(battleId) {
+        await this.pool.query('DELETE FROM battle_skaters WHERE battle_id = $1', [battleId]);
+        await this.pool.query('DELETE FROM battles WHERE id = $1', [battleId]);
+    }
+
+    async deleteBattlesByCategory(categoryId) {
+        const battlesToDelRes = await this.pool.query('SELECT id FROM battles WHERE category_id = $1', [categoryId]);
+        const ids = battlesToDelRes.rows.map(r => r.id);
+
+        if (ids.length > 0) {
+            await this.pool.query('DELETE FROM battle_skaters WHERE battle_id = ANY($1)', [ids]);
+            await this.pool.query('DELETE FROM battles WHERE id = ANY($1)', [ids]);
+        }
+    }
+
+
     // --- Tricks ---
     async saveTrick(battleId, skaterId, trickPerformed, role, slotIndex) {
         const res = await this.pool.query(
@@ -348,11 +364,15 @@ class SlideDB {
                 distance2Bonus = Math.max(0, Math.floor((distance2 - 2.0) / 0.5) * 1);
             }
             
-            // Lógica de COMBO (Regla 9.5.2.2)
+            // Lógica de COMBO (Opción 1 y 2 combinadas)
             let baseScore = trickPerformed.baseScore || 0;
             if (trickPerformed.isCombo && trickPerformed.baseScore2) {
-                // (Base1 + Base2) * 1.10 (Bonus por transición)
-                baseScore = Math.round((baseScore + trickPerformed.baseScore2) * 1.1 * 100) / 100;
+                const base1 = baseScore;
+                const base2 = trickPerformed.baseScore2 || 0;
+                const maxBase = Math.max(base1, base2);
+                const minBase = Math.min(base1, base2);
+                // 100% del mayor + 25% del menor con un multiplicador de 1.05x por la conexión
+                baseScore = Math.round((maxBase + (minBase * 0.25)) * 1.05 * 100) / 100;
             }
 
             const finalScore = baseScore + adjustment + distanceBonus + distance2Bonus + stopBonus;
@@ -481,7 +501,7 @@ class SlideDB {
 
     getStopBonus(trick) {
         if (!trick || trick.isFail || !trick.stopLevel) return 0;
-        const stopBonuses = { 0: 0, 1: 2.0, 2: 4.0, 3: 6.0 };
+        const stopBonuses = { 0: 0, 1: 5.0, 2: 10.0 };
         return stopBonuses[trick.stopLevel] || 0;
     }
 
@@ -500,11 +520,26 @@ class SlideDB {
         const validTricks = tricks.filter(t => t !== null && !t.isFail && t.finalScore > 0);
         if (validTricks.length === 0) return 0;
 
-        let scores = validTricks.map(t => t.finalScore);
+        let filteredTricks = validTricks;
+        const isAdvancedPhase = (phase === 'Final' || phase === 'Semifinal' || phase === 'Semi-Final');
+        
+        if (isAdvancedPhase) {
+            // Filtrar derrapes repetidos: sólo dejamos el de mayor puntaje final de los repetidos
+            const seenTricks = {};
+            validTricks.forEach(t => {
+                const key = t.isCombo ? `${t.trickId}_combo_${t.trickId2}` : t.trickId;
+                if (!seenTricks[key] || t.finalScore > seenTricks[key].finalScore) {
+                    seenTricks[key] = t;
+                }
+            });
+            filteredTricks = Object.values(seenTricks);
+        }
+
+        let scores = filteredTricks.map(t => t.finalScore);
         scores.sort((a, b) => b - a);
         const maxToCount = phase === 'Final' ? 4 : 3;
         const topScores = scores.slice(0, maxToCount);
-        const topTricksObjects = validTricks.filter(t => topScores.includes(t.finalScore)).slice(0, maxToCount);
+        const topTricksObjects = filteredTricks.filter(t => topScores.includes(t.finalScore)).slice(0, maxToCount);
 
         const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
         const m_var = this.getVarietyMultiplier(topTricksObjects);
@@ -546,6 +581,53 @@ class SlideDB {
         );
 
         return { success: true };
+    }
+
+    async swapSkaters(skaterId1, battleId1, skaterId2, battleId2) {
+        const client = await this.pool.connect();
+        try {
+            await client.query('BEGIN');
+            const res1 = await client.query('DELETE FROM battle_skaters WHERE battle_id = $1 AND skater_id = $2 RETURNING *', [battleId1, skaterId1]);
+            const res2 = await client.query('DELETE FROM battle_skaters WHERE battle_id = $1 AND skater_id = $2 RETURNING *', [battleId2, skaterId2]);
+
+            if (res1.rows.length === 0 || res2.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return { success: false, message: 'Patinador o batalla no encontrados' };
+            }
+
+            const row1 = res1.rows[0];
+            const row2 = res2.rows[0];
+
+            await client.query(
+                'INSERT INTO battle_skaters (battle_id, skater_id, judging, total_score, qualified) VALUES ($1, $2, $3, $4, $5)',
+                [battleId2, skaterId1, JSON.stringify(row1.judging), row1.total_score, row1.qualified]
+            );
+            await client.query(
+                'INSERT INTO battle_skaters (battle_id, skater_id, judging, total_score, qualified) VALUES ($1, $2, $3, $4, $5)',
+                [battleId1, skaterId2, JSON.stringify(row2.judging), row2.total_score, row2.qualified]
+            );
+
+            await client.query('COMMIT');
+            return { success: true };
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+    }
+
+    async moveSkater(skaterId, fromBattleId, toBattleId) {
+        try {
+            await this.pool.query(
+                'UPDATE battle_skaters SET battle_id = $1 WHERE battle_id = $2 AND skater_id = $3',
+                [toBattleId, fromBattleId, skaterId]
+            );
+            return { success: true };
+        } catch (e) {
+            console.error('[DB] Error moviendo patinador:', e.message);
+            return { success: false, message: e.message };
+        }
     }
 
     async close() {

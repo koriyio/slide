@@ -137,6 +137,23 @@ class JsonDB {
         });
     }
 
+    async deleteBattle(battleId) {
+        return this._withLock(async () => {
+            const db = await this.getDB();
+            db.battles = db.battles.filter(b => b.id !== battleId);
+            await this.saveDB(db);
+        });
+    }
+
+    async deleteBattlesByCategory(categoryId) {
+        return this._withLock(async () => {
+            const db = await this.getDB();
+            db.battles = db.battles.filter(b => b.categoryId !== categoryId);
+            await this.saveDB(db);
+        });
+    }
+
+
     async saveTrick(battleId, skaterId, trickPerformed, role, slotIndex) {
         return this._withLock(async () => {
             const db = await this.getDB();
@@ -159,7 +176,7 @@ class JsonDB {
             trickPerformed.stopBonus = 0;
             trickPerformed.distanceBonus = 0;
         } else {
-            const stopBonuses = { 0: 0, 1: 2.0, 2: 4.0, 3: 6.0 };
+            const stopBonuses = { 0: 0, 1: 5.0, 2: 10.0 };
             const stopBonus = stopBonuses[trickPerformed.stopLevel] || 0;
             const adjustment = parseFloat(trickPerformed.adjustment) || 0;
             const distance = parseFloat(trickPerformed.distance) || 2.0;
@@ -173,7 +190,12 @@ class JsonDB {
             
             let baseScore = trickPerformed.baseScore || 0;
             if (trickPerformed.isCombo && trickPerformed.baseScore2) {
-                baseScore = Math.round((baseScore + trickPerformed.baseScore2) * 1.1 * 100) / 100;
+                const base1 = baseScore;
+                const base2 = trickPerformed.baseScore2 || 0;
+                const maxBase = Math.max(base1, base2);
+                const minBase = Math.min(base1, base2);
+                // 100% del mayor + 25% del menor con un multiplicador de 1.05x por la conexión
+                baseScore = Math.round((maxBase + (minBase * 0.25)) * 1.05 * 100) / 100;
             }
 
             const finalScore = baseScore + adjustment + distanceBonus + distance2Bonus + stopBonus;
@@ -261,8 +283,23 @@ class JsonDB {
             const validTricks = tricks.filter(t => t !== null && !t.isFail && t.finalScore > 0);
             if (validTricks.length === 0) return 0;
 
+            let filteredTricks = validTricks;
+            const isAdvancedPhase = (phase === 'Final' || phase === 'Semifinal' || phase === 'Semi-Final');
+
+            if (isAdvancedPhase) {
+                // Filtrar derrapes repetidos: sólo dejamos el de mayor puntaje final de los repetidos
+                const seenTricks = {};
+                validTricks.forEach(t => {
+                    const key = t.isCombo ? `${t.trickId}_combo_${t.trickId2}` : t.trickId;
+                    if (!seenTricks[key] || t.finalScore > seenTricks[key].finalScore) {
+                        seenTricks[key] = t;
+                    }
+                });
+                filteredTricks = Object.values(seenTricks);
+            }
+
             // Ordenar por puntaje final para tomar los mejores N
-            const sortedByScore = [...validTricks].sort((a, b) => b.finalScore - a.finalScore);
+            const sortedByScore = [...filteredTricks].sort((a, b) => b.finalScore - a.finalScore);
             const maxToCount = phase === 'Final' ? 4 : 3;
             const bestTricks = sortedByScore.slice(0, maxToCount);
             const topScores = bestTricks.map(t => t.finalScore);
@@ -302,6 +339,49 @@ class JsonDB {
             
             skater.totalScore = this.calculateTotalScore(skater.judging, battle.phase);
             
+            await this.saveDB(db);
+            return { success: true };
+        });
+    }
+
+    async swapSkaters(skaterId1, battleId1, skaterId2, battleId2) {
+        return this._withLock(async () => {
+            const db = await this.getDB();
+            const b1 = db.battles.find(b => b.id === battleId1);
+            const b2 = db.battles.find(b => b.id === battleId2);
+
+            if (!b1 || !b2) return { success: false, message: 'Batalla no encontrada' };
+
+            const idx1 = b1.skaters.findIndex(s => String(s.skaterId) === String(skaterId1));
+            const idx2 = b2.skaters.findIndex(s => String(s.skaterId) === String(skaterId2));
+
+            if (idx1 === -1 || idx2 === -1) return { success: false, message: 'Patinador no encontrado' };
+
+            const s1 = b1.skaters[idx1];
+            const s2 = b2.skaters[idx2];
+
+            b1.skaters[idx1] = s2;
+            b2.skaters[idx2] = s1;
+
+            await this.saveDB(db);
+            return { success: true };
+        });
+    }
+
+    async moveSkater(skaterId, fromBattleId, toBattleId) {
+        return this._withLock(async () => {
+            const db = await this.getDB();
+            const bFrom = db.battles.find(b => b.id === fromBattleId);
+            const bTo = db.battles.find(b => b.id === toBattleId);
+
+            if (!bFrom || !bTo) return { success: false, message: 'Batalla no encontrada' };
+
+            const idx = bFrom.skaters.findIndex(s => String(s.skaterId) === String(skaterId));
+            if (idx === -1) return { success: false, message: 'Patinador no encontrado' };
+
+            const [skater] = bFrom.skaters.splice(idx, 1);
+            bTo.skaters.push(skater);
+
             await this.saveDB(db);
             return { success: true };
         });

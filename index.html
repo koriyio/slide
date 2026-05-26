@@ -241,17 +241,15 @@
                 <header class="view-header">
                     <div style="display:flex; flex-direction:column; gap:0.3rem;">
                         <h2>Competencias (Heats)</h2>
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <label for="battles-category-filter"
-                                style="font-size:0.8rem; color:var(--text-muted);">Filtrar por categoría:</label>
-                            <select id="battles-category-filter" style="min-width:200px;">
-                                <option value="">Todas las categorías</option>
-                                <!-- Dynamic -->
-                            </select>
-                        </div>
+                        <p style="font-size:0.85rem; color:var(--text-muted);">Gestión de grupos y fases de competencia</p>
                     </div>
-                    <button id="btn-generate-heats" class="btn-primary"><i class="ph ph-calendar-plus"></i> Generar
-                        Grupos</button>
+                    <!-- Elementos de control ocultos para automatización -->
+                    <div style="display:none;">
+                        <select id="battles-category-filter">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                        <button id="btn-generate-heats"></button>
+                    </div>
                 </header>
                 <div id="battles-container" class="battles-grid">
                     <!-- Tarjetas de batallas dinámicas -->
@@ -417,16 +415,16 @@
                 <div class="form-group" id="judge-adjustment-group">
                     <label>Ajuste de Puntos (+ / -)</label>
                     <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <button type="button" class="btn-secondary" onclick="adjustPoints(-1)"
-                            style="padding:0.5rem; flex:1;">-1.0</button>
-                        <button type="button" class="btn-secondary" onclick="adjustPoints(-0.5)"
-                            style="padding:0.5rem; flex:1;">-0.5</button>
-                        <input type="number" id="judge-adjustment" value="0" step="0.1"
+                        <button type="button" class="btn-secondary" onclick="adjustPoints(-10)"
+                            style="padding:0.5rem; flex:1;">-10</button>
+                        <button type="button" class="btn-secondary" onclick="adjustPoints(-5)"
+                            style="padding:0.5rem; flex:1;">-5</button>
+                        <input type="number" id="judge-adjustment" value="0" step="1"
                             style="text-align:center; font-size:1.2rem; width:80px; background:var(--bg-app); border:1px solid var(--border); color:var(--text-main); border-radius:var(--radius-sm);">
-                        <button type="button" class="btn-secondary" onclick="adjustPoints(0.5)"
-                            style="padding:0.5rem; flex:1;">+0.5</button>
-                        <button type="button" class="btn-secondary" onclick="adjustPoints(1)"
-                            style="padding:0.5rem; flex:1;">+1.0</button>
+                        <button type="button" class="btn-secondary" onclick="adjustPoints(5)"
+                            style="padding:0.5rem; flex:1;">+5</button>
+                        <button type="button" class="btn-secondary" onclick="adjustPoints(10)"
+                            style="padding:0.5rem; flex:1;">+10</button>
                     </div>
                 </div>
 
@@ -443,15 +441,11 @@
                         </label>
                         <label class="stop-option">
                             <input type="radio" name="judge-stop-level" value="1" hidden>
-                            <div>Nivel 1 (+2)</div>
+                            <div>Nivel 1 (+5)</div>
                         </label>
                         <label class="stop-option">
                             <input type="radio" name="judge-stop-level" value="2" hidden>
-                            <div>Nivel 2 (+4)</div>
-                        </label>
-                        <label class="stop-option">
-                            <input type="radio" name="judge-stop-level" value="3" hidden>
-                            <div>Nivel 3 (+6)</div>
+                            <div>Nivel 2 (+10)</div>
                         </label>
                     </div>
                     <p style="font-size:0.65rem; color:var(--text-muted); margin-top:0.4rem;">
@@ -576,6 +570,37 @@
                     </div>
                 </div>
                 <button onclick="submitBestSlide()" class="btn-primary" style="width:100%; margin-top:1.5rem;"><i class="ph ph-check"></i> Calcular y Aplicar (+0.01)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Move/Swap Skater -->
+    <div id="modal-move-skater" class="modal hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3><i class="ph ph-arrows-left-right"></i> Gestionar Grupo</h3>
+                <button onclick="document.getElementById('modal-move-skater').classList.add('hidden')" class="btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="move-skater-info" style="font-size:1rem; margin-bottom:1.2rem; padding:0.8rem; background:var(--primary-glow); border-radius:var(--radius-sm); border-left:4px solid var(--primary);"></div>
+                
+                <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                    <!-- Opción A: Mover a otro grupo -->
+                    <div style="padding:1rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-md); border:1px solid var(--border);">
+                        <label style="font-size:0.8rem; font-weight:bold; color:var(--primary); margin-bottom:0.5rem; display:block;">OPCIÓN 1: MOVER A OTRO GRUPO</label>
+                        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.8rem;">Mueve al deportista a un heat diferente. El grupo actual quedará con uno menos.</p>
+                        <select id="move-target-battle" class="input-modern" style="margin-bottom:0.8rem; width:100%;"></select>
+                        <button onclick="confirmMoveSkater()" class="btn-primary" style="width:100%;"><i class="ph ph-arrow-fat-right"></i> Mover Participante</button>
+                    </div>
+
+                    <!-- Opción B: Intercambiar con otro participante -->
+                    <div style="padding:1rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-md); border:1px solid var(--border);">
+                        <label style="font-size:0.8rem; font-weight:bold; color:var(--primary); margin-bottom:0.5rem; display:block;">OPCIÓN 2: INTERCAMBIAR CON OTRO</label>
+                        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.8rem;">Intercambia la posición de este deportista con otro de cualquier grupo.</p>
+                        <select id="swap-target-skater" class="input-modern" style="margin-bottom:0.8rem; width:100%;"></select>
+                        <button onclick="confirmSwapSkater()" class="btn-secondary" style="width:100%;"><i class="ph ph-arrows-left-right"></i> Intercambiar Posiciones</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

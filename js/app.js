@@ -862,71 +862,75 @@ function renderSkaters() {
 }
 
 function renderBattles() {
-    const catId = ui.battlesCategorySelect.value;
     ui.battlesContainer.innerHTML = '';
-
     const allSkaters = window.db.getSkaters();
-    let battles = [];
+    const categories = window.db.getCategories();
+    const allBattles = window.db.getBattles() || [];
 
-    // Si hay categoría seleccionada, filtrar por ella. Si no, mostrar TODAS las batallas
-    if (catId) {
-        battles = window.db.getBattlesByCategory(catId);
+    // 1. Mostrar categorías que necesitan generar Heats
+    let needsGenerationHtml = '';
+    categories.forEach(cat => {
+        const skatersInCat = allSkaters.filter(s => s.categoryId === cat.id);
+        const battlesInCat = allBattles.filter(b => b.categoryId === cat.id);
 
-        // Si no hay batallas pero hay competidores, podriamos ofrecer generar (mejora de main)
-        if (battles.length === 0) {
-            const skatersInCat = window.db.getSkaters().filter(s => s.categoryId === catId);
-            if (skatersInCat.length >= 3) {
-                // Generaciión autom├ítica si hay suficientes
-                ui.battlesContainer.innerHTML = `
-                    <div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">
-                        <p>No hay competencias generadas para esta categoría, pero hay ${skatersInCat.length} competidores listos.</p>
-                        <button class="btn-primary" onclick="generateHeats('${catId}')" style="margin-top:1rem;">Generar Grupos Ahora</button>
-                    </div>`;
-                return;
-            } else if (skatersInCat.length > 0) {
-                ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--orange-500);">No hay suficientes competidores para hacer grupos. Se necesitan al menos 3.</div>';
-                return;
-            }
+        if (skatersInCat.length >= 3 && battlesInCat.length === 0) {
+            needsGenerationHtml += `
+                <div style="grid-column: 1 / -1; padding:2rem; background:linear-gradient(135deg, rgba(0, 57, 166, 0.05), rgba(213, 43, 30, 0.05)); border:2px dashed var(--accent); border-radius:var(--radius-md); text-align:center; margin-bottom:1.5rem;">
+                    <h3 style="color:var(--primary); margin-bottom:0.5rem;">Categoría: ${cat.name}</h3>
+                    <p style="color:var(--text-muted); margin-bottom:1.2rem;">Hay ${skatersInCat.length} patinadores listos para competir, pero no se han creado los grupos.</p>
+                    <button class="btn-primary" onclick="generateHeats('${cat.id}')" style="padding:0.8rem 2rem; font-size:1rem;">
+                        <i class="ph ph-plus-circle"></i> CREAR GRUPOS DE COMPETENCIA
+                    </button>
+                </div>
+            `;
         }
-    } else {
-        // Obtener todas las batallas de todas las categorías (mejora de master)
-        battles = window.db.getBattles() || [];
+    });
+
+    if (needsGenerationHtml) {
+        const div = document.createElement('div');
+        div.style.gridColumn = '1 / -1';
+        div.innerHTML = needsGenerationHtml;
+        ui.battlesContainer.appendChild(div);
     }
 
-    if (battles.length === 0) {
-        ui.battlesContainer.innerHTML = '<div style="grid-column: 1 / -1; padding:3rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">No hay competencias generadas aún. Selecciona una categoría para empezar.</div>';
-        return;
-    }
-
-    // Agrupar batallas por categoría para mostrar cuando se muestran todas
+    // 2. Agrupar batallas existentes por categoría
     const battlesByCategory = {};
-    battles.forEach(battle => {
+    allBattles.forEach(battle => {
         if (!battlesByCategory[battle.categoryId]) {
             battlesByCategory[battle.categoryId] = [];
         }
         battlesByCategory[battle.categoryId].push(battle);
     });
 
-    // Si hay categoría seleccionada, renderizar normalmente
-    if (catId) {
-        renderBattlesByCategory(battles, allSkaters);
-        checkAndShowNextPhaseButton(catId);
-    } else {
-        // Renderizar todas las batallas agrupadas por categoría
-        const categories = window.db.getCategories();
-        Object.keys(battlesByCategory).forEach(categoryId => {
-            const category = categories.find(c => c.id === categoryId);
-            const categoryName = category ? category.name : categoryId;
-
-            // Category separator
-            const categoryTitle = document.createElement('h3');
-            categoryTitle.style.cssText = 'grid-column: 1 / -1; color: var(--accent); margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.2rem; text-transform: uppercase; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;';
-            categoryTitle.innerHTML = `<i class="ph ph-award"></i> ${categoryName}`;
-            ui.battlesContainer.appendChild(categoryTitle);
-
-            renderBattlesByCategory(battlesByCategory[categoryId], allSkaters);
-        });
+    if (allBattles.length === 0 && !needsGenerationHtml) {
+        ui.battlesContainer.innerHTML = `
+            <div style="grid-column: 1 / -1; padding:4rem; text-align:center; color:var(--text-muted); background:var(--bg-surface); border-radius:var(--radius-md); border:1px dashed var(--border);">
+                <i class="ph ph-info" style="font-size:3rem; margin-bottom:1rem; opacity:0.3;"></i>
+                <p>No hay competencias generadas ni suficientes patinadores inscritos.</p>
+                <p style="font-size:0.85rem; margin-top:0.5rem;">Asegúrate de inscribir al menos 3 patinadores por categoría.</p>
+            </div>`;
+        return;
     }
+
+    // 3. Renderizar las batallas agrupadas
+    Object.keys(battlesByCategory).forEach(categoryId => {
+        const category = categories.find(c => c.id === categoryId);
+        const categoryName = category ? category.name : categoryId;
+
+        // Separador de Categoría
+        const isJuez1 = window.db.currentRole === 'Juez 1';
+        const deleteCategoryBattlesBtn = isJuez1 
+            ? `<button class="btn-secondary" onclick="deleteBattlesByCategory('${categoryId}', '${categoryName}')" style="margin-left:auto; padding:0.3rem 0.6rem; font-size:0.8rem; color:#ef4444; border-color:rgba(239,68,68,0.2); background:transparent; display:flex; align-items:center; gap:0.3rem;"><i class="ph ph-trash"></i> Eliminar Grupos</button>`
+            : '';
+
+        const categoryTitle = document.createElement('h3');
+        categoryTitle.style.cssText = 'grid-column: 1 / -1; color: var(--accent); margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.2rem; text-transform: uppercase; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; display:flex; align-items:center; gap:0.6rem; width:100%;';
+        categoryTitle.innerHTML = `<i class="ph ph-award"></i> <span>${categoryName}</span> ${deleteCategoryBattlesBtn}`;
+        ui.battlesContainer.appendChild(categoryTitle);
+
+        renderBattlesByCategory(battlesByCategory[categoryId], allSkaters);
+        checkAndShowNextPhaseButton(categoryId);
+    });
 }
 
 function renderBattlesByCategory(battles, allSkaters) {
@@ -974,10 +978,18 @@ function renderBattlesByCategory(battles, allSkaters) {
             const catInfo = dbCategories.find(c => c.id == battle.categoryId);
             const catName = catInfo ? catInfo.name : '';
 
+            const isJuez1 = window.db.currentRole === 'Juez 1';
+            const deleteBtnHtml = isJuez1 
+                ? `<button class="btn-delete-battle" onclick="event.stopPropagation(); deleteBattle('${battle.id}', '${battle.phase} ${battle.heatNumber}')" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; transition:color 0.2s; padding:0.2rem; display:inline-flex; align-items:center; justify-content:center;" onmouseenter="this.style.color='#ef4444'" onmouseleave="this.style.color='var(--text-muted)'" title="Eliminar Competencia"><i class="ph ph-trash"></i></button>`
+                : '';
+
             let header = `
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:0.8rem;">
                     <div style="display:flex; flex-direction:column; gap:0.2rem;">
-                        <h3 style="font-size:1.1rem; color:var(--primary); margin:0;">${battle.phase} ${battle.heatNumber}</h3>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <h3 style="font-size:1.1rem; color:var(--primary); margin:0;">${battle.phase} ${battle.heatNumber}</h3>
+                            ${deleteBtnHtml}
+                        </div>
                         <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">${catName}</span>
                     </div>
                     ${statusBadge}
@@ -1067,16 +1079,54 @@ function renderBattlesByCategory(battles, allSkaters) {
 function checkAndShowNextPhaseButton(catId) {
     if (!catId) return; // No mostrar botón cuando se ven todas las categorías
 
+    // Solo el Juez 1 (Admin) puede ver el botón de siguiente fase
+    if (window.db.currentRole !== 'Juez 1') return;
+
     const battles = window.db.getBattlesByCategory(catId);
     if (!battles || battles.length === 0) return;
-    const currentBattles = battles.filter(b => b.phase === battles[battles.length - 1].phase);
-    const uncompleted = currentBattles.some(b => b.status !== 'completed');
-    const isFinal = currentBattles.some(b => b.phase === 'Final');
+    
+    // Detectar fase actual más avanzada (lógica sincronizada con storage.js)
+    let currentPhaseName = 'Preliminar';
+    if (battles.some(b => b.phase === 'Final')) return; // Ya estamos en la final
+    
+    if (battles.some(b => ['Semifinal', 'Semi-Final'].includes(b.phase))) {
+        currentPhaseName = 'Semifinal';
+    } else if (battles.some(b => ['Cuartos', 'Quarter-Final'].includes(b.phase))) {
+        currentPhaseName = 'Cuartos';
+    } else {
+        currentPhaseName = 'Preliminar';
+    }
 
-    if (!uncompleted && !isFinal) {
+    // Filtrar batallas de la fase actual (incluyendo sinónimos)
+    const currentBattles = battles.filter(b => {
+        if (currentPhaseName === 'Semifinal') return ['Semifinal', 'Semi-Final'].includes(b.phase);
+        if (currentPhaseName === 'Cuartos') return ['Cuartos', 'Quarter-Final'].includes(b.phase);
+        return ['Preliminar', 'Heat'].includes(b.phase);
+    });
+
+    const allCompleted = currentBattles.length > 0 && currentBattles.every(b => b.status === 'completed');
+
+    if (allCompleted) {
         const nextPhaseDiv = document.createElement('div');
-        nextPhaseDiv.style.cssText = 'grid-column: 1 / -1; text-align:center; padding: 2rem 0; border-top: 1px dashed var(--border); margin-top: 1rem;';
-        nextPhaseDiv.innerHTML = `<button class="btn-primary" onclick="triggerNextPhase('${catId}')" style="font-size: 1.1rem; padding: 0.8rem 2rem;"><i class="ph ph-fast-forward"></i> Generar Siguiente Ronda de Clasificados</button>`;
+        nextPhaseDiv.style.cssText = 'grid-column: 1 / -1; text-align:center; padding: 2rem 0; border-top: 1px dashed var(--border); margin-top: 1.5rem;';
+        
+        // Determinar nombre de la siguiente fase para el botón
+        let nextPhaseLabel = 'SIGUIENTE RONDA';
+        if (currentPhaseName === 'Semifinal') nextPhaseLabel = 'FINAL';
+        else if (currentPhaseName === 'Cuartos') nextPhaseLabel = 'SEMIFINAL';
+        else if (currentPhaseName === 'Preliminar') {
+            // Si hay pocos clasificados, podría ir directo a final o semi
+            nextPhaseLabel = 'SIGUIENTE FASE';
+        }
+
+        nextPhaseDiv.innerHTML = `
+            <button class="btn-primary" onclick="triggerNextPhase('${catId}')" 
+                    style="font-size: 1.1rem; padding: 1rem 3rem; background:linear-gradient(135deg, var(--accent), #10b981); border:none; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4); border-radius: 50px; cursor:pointer; font-weight:700; transition: transform 0.2s, box-shadow 0.2s;"
+                    onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 25px rgba(16, 185, 129, 0.5)';"
+                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 20px rgba(16, 185, 129, 0.4)';">
+                <i class="ph ph-fast-forward" style="margin-right:0.5rem;"></i> GENERAR ${nextPhaseLabel} CON CLASIFICADOS
+            </button>
+        `;
         ui.battlesContainer.appendChild(nextPhaseDiv);
     }
 }
@@ -1090,6 +1140,40 @@ window.generateHeats = function(catId) {
     if (confirm(`¿Generar grupos para esta categoría? Se borrarán los grupos actuales.`)) {
         window.db.generateHeats(catId);
         showToast('Generando grupos en el servidor...');
+    }
+};
+
+window.deleteBattle = function(battleId, battleName) {
+    if (window.db.currentRole !== 'Juez 1') {
+        showToast('⚠️ Solo el Juez 1 puede eliminar competencias', true);
+        return;
+    }
+    if (confirm(`⚠️ ¿Seguro que deseas eliminar la competencia "${battleName}"? Se perderán todos sus resultados.`)) {
+        window.db.deleteBattle(battleId, (res) => {
+            if (res && res.success) {
+                showToast(`Competencia "${battleName}" eliminada con éxito.`);
+                renderBattles();
+            } else {
+                showToast(res?.message || 'Error al eliminar la competencia', true);
+            }
+        });
+    }
+};
+
+window.deleteBattlesByCategory = function(catId, catName) {
+    if (window.db.currentRole !== 'Juez 1') {
+        showToast('⚠️ Solo el Juez 1 puede eliminar competencias', true);
+        return;
+    }
+    if (confirm(`⚠️ ¿Seguro que deseas eliminar TODOS los grupos y competencias de la categoría "${catName}"? Se perderán todos sus resultados de forma irreversible.`)) {
+        window.db.deleteBattlesByCategory(catId, (res) => {
+            if (res && res.success) {
+                showToast(`Competencias de la categoría "${catName}" eliminadas.`);
+                renderBattles();
+            } else {
+                showToast(res?.message || 'Error al eliminar competencias de la categoría', true);
+            }
+        });
     }
 };
 
@@ -1152,6 +1236,15 @@ function openJudgeModal(skaterId, skaterName, slotIndex) {
 
     ui.modalJudge.classList.remove('hidden');
 }
+
+function adjustPoints(val) {
+    const input = document.getElementById('judge-adjustment');
+    if (input) {
+        let current = parseFloat(input.value) || 0;
+        input.value = Math.round((current + val) * 10) / 10;
+    }
+}
+window.adjustPoints = adjustPoints;
 
 // Actualizar contador de familias y vista previa de combo
 function updateFamilyCounterAndCombo(skaterId, currentSlotIndex) {
@@ -1273,20 +1366,7 @@ function renderActiveBattle() {
                 const sInfo = db.skaters.find(s => s.id == bs.skaterId);
                 if (!sInfo) return;
                 
-                const judging = bs.judging || { 'Juez 1': [], 'Juez 2': [], 'Juez 3': [] };
-                
-                const getSum = (r) => {
-                    let scores = (judging[r] || []).map(t => t ? t.finalScore : 0);
-                    scores.sort((a, b) => b - a);
-                    const maxToCount = battle.phase === 'Final' ? 4 : 3;
-                    return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
-                };
-
-                const j1Sum = getSum('Juez 1');
-                const j2Sum = getSum('Juez 2');
-                const j3Sum = getSum('Juez 3');
-                const baseScore = ((j1Sum + j2Sum + j3Sum) / 3).toFixed(2);
-                
+                const baseScore = (bs.totalScore || 0).toFixed(2);
                 if (!scoreGroups[baseScore]) scoreGroups[baseScore] = 0;
                 scoreGroups[baseScore]++;
             });
@@ -1377,17 +1457,47 @@ function renderActiveBattle() {
 
         // Header con resultados globales
         const getSum = (r) => {
-            let scores = (judging[r] || []).map(t => t ? t.finalScore : 0);
-            scores.sort((a, b) => b - a);
+            const tricks = judging[r] || [];
+            const validTricks = tricks.filter(t => t !== null && !t.isFail && t.finalScore > 0);
+            if (validTricks.length === 0) return 0;
+
+            let filteredTricks = validTricks;
+            const isAdvancedPhase = (battle.phase === 'Final' || battle.phase === 'Semifinal' || battle.phase === 'Semi-Final');
+
+            if (isAdvancedPhase) {
+                // Filtrar derrapes repetidos: sólo dejamos el de mayor puntaje final de los repetidos
+                const seenTricks = {};
+                validTricks.forEach(t => {
+                    const key = t.isCombo ? `${t.trickId}_combo_${t.trickId2}` : t.trickId;
+                    if (!seenTricks[key] || t.finalScore > seenTricks[key].finalScore) {
+                        seenTricks[key] = t;
+                    }
+                });
+                filteredTricks = Object.values(seenTricks);
+            }
+
+            // Ordenar por puntaje final para tomar los mejores N
+            const sortedByScore = [...filteredTricks].sort((a, b) => b.finalScore - a.finalScore);
             const maxToCount = battle.phase === 'Final' ? 4 : 3;
-            return scores.slice(0, maxToCount).reduce((acc, score) => acc + score, 0);
+            const bestTricks = sortedByScore.slice(0, maxToCount);
+            const topScores = bestTricks.map(t => t.finalScore);
+
+            // Multiplicador de variedad basado en los MEJORES trucos (bestTricks)
+            const families = new Set(bestTricks.map(t => (t.family || '').match(/^(F\d+)/)?.[1] || ''));
+            const numFamilies = families.size;
+            let m_var = 1.0;
+            if (numFamilies === 3) m_var = 1.05;
+            else if (numFamilies >= 4) m_var = 1.10;
+
+            const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
+            return Math.round(baseTotal * m_var * 100) / 100;
         };
 
         const j1Sum = getSum('Juez 1');
         const j2Sum = getSum('Juez 2');
         const j3Sum = getSum('Juez 3');
 
-        // Solo mostrar el Total Global si el Admin cerr├│ la batalla o si los 3 jueces ya completaron todos los slots
+        // Solo mostrar el Total Global si el Admin cerró la batalla o si los 3 jueces ya completaron todos los slots
         const isAllReady = Object.keys(judging).every(roleKey => {
             const slots = judging[roleKey] || [];
             // Verificar que hayamos llenado hasta maxSlots
@@ -1397,7 +1507,16 @@ function renderActiveBattle() {
         const showGlobal = battle.status === 'completed' || isAllReady;
 
         const headHtml = `
-            <div style="padding:1.2rem; background:rgba(0,0,0,0.2); border-bottom:1px solid var(--border);">
+            <div style="padding:1.2rem; background:rgba(0,0,0,0.2); border-bottom:1px solid var(--border); position:relative;">
+                ${window.db.currentRole === 'Juez 1' && battle.status !== 'completed' ? `
+                    <button onclick="openMoveSkaterModal('${bs.skaterId}', '${sInfo.firstName} ${sInfo.lastName}', '${currentBattleId}')" 
+                            style="position:absolute; top:0.5rem; right:0.5rem; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:4px; color:var(--text-muted); cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; transition:all 0.2s;"
+                            onmouseover="this.style.color='var(--primary)'; this.style.borderColor='var(--primary)'"
+                            onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)'"
+                            title="Cambiar de grupo o intercambiar">
+                        <i class="ph ph-arrows-left-right" style="font-size:1.1rem;"></i>
+                    </button>
+                ` : ''}
                 <h3 style="font-size:1.2rem; margin-bottom:0.1rem; text-align:center;">${sInfo.firstName.toUpperCase()} <strong>${sInfo.lastName.toUpperCase()}</strong></h3>
                 <code style="display:block; font-size:0.7rem; opacity:0.5; margin-bottom:0.8rem; text-align:center;">${sInfo.externalId || '-'}</code>
 
@@ -1424,7 +1543,7 @@ function renderActiveBattle() {
                 <div style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); padding:0.8rem; border-radius:6px; border:2px solid ${showGlobal ? 'var(--accent)' : 'var(--border)'}; ${(battle.status !== 'completed' && !showGlobal) ? 'filter: blur(3px); opacity:0.4;' : ''}">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:1px;">TOTAL GLOBAL</span>
-                        <strong style="color:var(--accent); font-size:1.5rem;">${(battle.status === 'completed' || showGlobal) ? (judging.bestSlideBonus ? (((j1Sum + j2Sum + j3Sum) / 3) + 0.01).toFixed(2) : ((j1Sum + j2Sum + j3Sum) / 3).toFixed(2)) : '--.--'}</strong>
+                        <strong style="color:var(--accent); font-size:1.5rem;">${(battle.status === 'completed' || showGlobal) ? (bs.totalScore || 0).toFixed(2) : '--.--'}</strong>
                     </div>
                 </div>
 
@@ -1573,7 +1692,7 @@ function renderActiveBattle() {
                         // Stop bonus display
                         let stopBonusText = '';
                         if (slide.stopLevel && slide.stopLevel > 0 && !slide.isFail) {
-                            const stopLabels = { 1: 'N1', 2: 'N2', 3: 'N3' };
+                            const stopLabels = { 1: 'N1', 2: 'N2' };
                             stopBonusText = `<span style="color:#F59E0B; font-weight:600;"><i class="ph-fill ph-hand-palm"></i> Stop ${stopLabels[slide.stopLevel]}</span>`;
                         }
 
@@ -1844,10 +1963,40 @@ function exportTournamentCSV() {
                 totalScore = result.totalScore;
                 const judging = result.judging || {};
                 const getSumExport = (role) => {
-                    let tricks = (judging[role] || []).filter(t => t && !t.isFail).map(t => t.finalScore);
-                    tricks.sort((a, b) => b - a);
-                    const top = tricks.slice(0, lastBattle.phase === 'Final' ? 4 : 3);
-                    return top.reduce((a, b) => a + b, 0);
+                    const tricks = judging[role] || [];
+                    const validTricks = tricks.filter(t => t !== null && !t.isFail && t.finalScore > 0);
+                    if (validTricks.length === 0) return 0;
+
+                    let filteredTricks = validTricks;
+                    const isAdvancedPhase = (lastBattle.phase === 'Final' || lastBattle.phase === 'Semifinal' || lastBattle.phase === 'Semi-Final');
+
+                    if (isAdvancedPhase) {
+                        // Filtrar derrapes repetidos: sólo dejamos el de mayor puntaje final
+                        const seenTricks = {};
+                        validTricks.forEach(t => {
+                            const key = t.isCombo ? `${t.trickId}_combo_${t.trickId2}` : t.trickId;
+                            if (!seenTricks[key] || t.finalScore > seenTricks[key].finalScore) {
+                                seenTricks[key] = t;
+                            }
+                        });
+                        filteredTricks = Object.values(seenTricks);
+                    }
+
+                    // Ordenar por puntaje para tomar los mejores N
+                    const sortedByScore = [...filteredTricks].sort((a, b) => b.finalScore - a.finalScore);
+                    const maxToCount = lastBattle.phase === 'Final' ? 4 : 3;
+                    const bestTricks = sortedByScore.slice(0, maxToCount);
+                    const topScores = bestTricks.map(t => t.finalScore);
+
+                    // Multiplicador de variedad
+                    const families = new Set(bestTricks.map(t => (t.family || '').match(/^(F\d+)/)?.[1] || ''));
+                    const numFamilies = families.size;
+                    let m_var = 1.0;
+                    if (numFamilies === 3) m_var = 1.05;
+                    else if (numFamilies >= 4) m_var = 1.10;
+
+                    const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
+                    return Math.round(baseTotal * m_var * 100) / 100;
                 };
                 j1Score = getSumExport('Juez 1');
                 j2Score = getSumExport('Juez 2');
@@ -2129,3 +2278,81 @@ window.addEventListener('offline', () => {
     showToast('⚠️ CONEXI&Oacute;N PERDIDA. Revisa tu internet.', true);
     document.body.classList.add('is-offline');
 });
+
+// --- MOVIMIENTO DE PATINADORES ENTRE GRUPOS ---
+
+let moveSkaterContext = {
+    skaterId: null,
+    fromBattleId: null
+};
+
+function openMoveSkaterModal(skaterId, skaterName, battleId) {
+    moveSkaterContext.skaterId = skaterId;
+    moveSkaterContext.fromBattleId = battleId;
+    
+    document.getElementById('move-skater-info').innerText = `${skaterName.toUpperCase()}`;
+    
+    const db = window.db.getDB();
+    const currentBattle = db.battles.find(b => b.id == battleId);
+    
+    // Poblar select de batallas destino (misma categoría, diferente heat)
+    const moveSelect = document.getElementById('move-target-battle');
+    moveSelect.innerHTML = '<option value="">Seleccionar Grupo...</option>';
+    
+    db.battles.filter(b => b.categoryId === currentBattle.categoryId && b.id !== battleId).forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.innerText = `${b.phase} Heat ${b.heatNumber} (${b.skaters.length} patinadores)`;
+        moveSelect.appendChild(opt);
+    });
+
+    // Poblar select de patinadores para intercambiar
+    const swapSelect = document.getElementById('swap-target-skater');
+    swapSelect.innerHTML = '<option value="">Seleccionar Participante...</option>';
+    
+    db.battles.filter(b => b.categoryId === currentBattle.categoryId).forEach(b => {
+        b.skaters.forEach(bs => {
+            if (String(bs.skaterId) === String(skaterId)) return;
+            const sInfo = db.skaters.find(s => String(s.id) === String(bs.skaterId));
+            if (!sInfo) return;
+            const opt = document.createElement('option');
+            opt.value = JSON.stringify({ skaterId: bs.skaterId, battleId: b.id });
+            opt.innerText = `${sInfo.firstName} ${sInfo.lastName} (${b.phase} H${b.heatNumber})`;
+            swapSelect.appendChild(opt);
+        });
+    });
+
+    document.getElementById('modal-move-skater').classList.remove('hidden');
+}
+window.openMoveSkaterModal = openMoveSkaterModal;
+
+async function confirmMoveSkater() {
+    const targetBattleId = document.getElementById('move-target-battle').value;
+    if (!targetBattleId) return showToast('Seleccione un grupo de destino', true);
+    
+    if (confirm('¿Desea mover al patinador al grupo seleccionado? Se conservarán sus puntuaciones si ya existen.')) {
+        window.db.moveSkater(moveSkaterContext.skaterId, moveSkaterContext.fromBattleId, targetBattleId);
+        document.getElementById('modal-move-skater').classList.add('hidden');
+        showToast('Petición de movimiento enviada');
+    }
+}
+window.confirmMoveSkater = confirmMoveSkater;
+
+async function confirmSwapSkater() {
+    const targetDataStr = document.getElementById('swap-target-skater').value;
+    if (!targetDataStr) return showToast('Seleccione un participante para intercambiar', true);
+    
+    const target = JSON.parse(targetDataStr);
+    
+    if (confirm('¿Desea intercambiar las posiciones de estos dos deportistas?')) {
+        window.db.swapSkaters(
+            moveSkaterContext.skaterId, 
+            moveSkaterContext.fromBattleId,
+            target.skaterId,
+            target.battleId
+        );
+        document.getElementById('modal-move-skater').classList.add('hidden');
+        showToast('Petición de intercambio enviada');
+    }
+}
+window.confirmSwapSkater = confirmSwapSkater;

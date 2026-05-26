@@ -73,13 +73,15 @@ io.on('connection', async (socket) => {
 
     // Login
     socket.on('login', async (credentials, callback) => {
-        let { role, username, password } = credentials || {};
+        let { role, username, password, user, pass } = credentials || {};
+        const activeUser = username || user || "";
+        const activePass = password || pass || "";
 
         // Si no se provee rol, o si el usuario no coincide con el rol enviado, 
         // intentar encontrar el rol correcto basado en el nombre de usuario.
         // Esto permite alias como 'admin' o 'juez1' si se configuran asì.
         const foundRole = Object.keys(AUTH_CONFIG).find(r =>
-            AUTH_CONFIG[r].user.toLowerCase() === (username || "").toLowerCase()
+            AUTH_CONFIG[r].user.toLowerCase() === activeUser.toLowerCase()
         );
 
         if (foundRole) {
@@ -87,7 +89,7 @@ io.on('connection', async (socket) => {
         }
 
         if (!role || !AUTH_CONFIG[role]) {
-            console.warn(`[AUDIT] Intento de login fallido: usuario no reconocido "${username}" - IP: ${socket.handshake.address}`);
+            console.warn(`[AUDIT] Intento de login fallido: usuario no reconocido "${activeUser}" - IP: ${socket.handshake.address}`);
             return callback({ success: false, message: 'Usuario o rol invalido' });
         }
 
@@ -95,7 +97,7 @@ io.on('connection', async (socket) => {
         const expectedPass = AUTH_CONFIG[role].pass;
 
         // Validar contraseña (el usuario ya lo validamos al encontrar el rol, pero re-verificamos por seguridad)
-        if (username.toLowerCase() !== expectedUser.toLowerCase() || password !== expectedPass) {
+        if (activeUser.toLowerCase() !== expectedUser.toLowerCase() || activePass !== expectedPass) {
             console.warn(`[AUDIT] Credenciales incorrectas para ${role} - IP: ${socket.handshake.address}`);
             return callback({ success: false, message: 'Credenciales incorrectas' });
         }
@@ -242,6 +244,55 @@ io.on('connection', async (socket) => {
             await broadcastUpdate();
         }
     });
+
+    socket.on('swap-skaters', async ({ skaterId1, battleId1, skaterId2, battleId2 }) => {
+        if (!requireAuth('Juez 1', 'intercambiar patinadores')) return;
+        const result = await db.swapSkaters(skaterId1, battleId1, skaterId2, battleId2);
+        if (result.success) {
+            await broadcastUpdate();
+        }
+    });
+
+    socket.on('move-skater', async ({ skaterId, fromBattleId, toBattleId }) => {
+        if (!requireAuth('Juez 1', 'mover patinador')) return;
+        const result = await db.moveSkater(skaterId, fromBattleId, toBattleId);
+        if (result.success) {
+            await broadcastUpdate();
+        }
+    });
+
+    socket.on('delete-battle', async (battleId, callback) => {
+        if (!requireAuth('Juez 1', 'eliminar competencia')) {
+            if (callback) callback({ success: false, message: 'No autorizado' });
+            return;
+        }
+        try {
+            await db.deleteBattle(battleId);
+            console.log(`[AUDIT] Batalla ${battleId} eliminada exitosamente`);
+            await broadcastUpdate();
+            if (callback) callback({ success: true });
+        } catch (err) {
+            console.error(`[AUDIT] Error al eliminar batalla ${battleId}:`, err.message);
+            if (callback) callback({ success: false, message: err.message });
+        }
+    });
+
+    socket.on('delete-battles-by-category', async (categoryId, callback) => {
+        if (!requireAuth('Juez 1', 'eliminar competencias por categoria')) {
+            if (callback) callback({ success: false, message: 'No autorizado' });
+            return;
+        }
+        try {
+            await db.deleteBattlesByCategory(categoryId);
+            console.log(`[AUDIT] Batallas de la categoria ${categoryId} eliminadas exitosamente`);
+            await broadcastUpdate();
+            if (callback) callback({ success: true });
+        } catch (err) {
+            console.error(`[AUDIT] Error al eliminar batallas de categoria ${categoryId}:`, err.message);
+            if (callback) callback({ success: false, message: err.message });
+        }
+    });
+
 
     // --- Finish Battle ---
     socket.on('finish-battle', async (battleId, callback) => {
