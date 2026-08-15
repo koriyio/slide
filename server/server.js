@@ -4,7 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const cors = require('cors');
-const pdf = require('html-pdf-node');
+// PDF export is handled client-side (no server-side PDF dependency needed)
 const SliderDB = process.env.DATABASE_URL ? require('./db') : require('./db_json');
 
 const app = express();
