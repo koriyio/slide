@@ -5,10 +5,9 @@ const { Server } = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 // PDF export is handled client-side (no server-side PDF dependency needed)
-const SliderDB = process.env.DATABASE_URL ? require('./db') : require('./db_json');
+let db = null;
 
 const app = express();
-
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -18,7 +17,6 @@ const io = new Server(server, {
     }
 });
 
-const db = new SliderDB();
 
 const AUTH_CONFIG = {
     'Juez 1': {
@@ -356,8 +354,31 @@ const PORT = process.env.PORT || 3005;
         console.log('[STARTUP] PORT:', process.env.PORT || '3005 (default)');
         console.log('[STARTUP] DATABASE_URL:', process.env.DATABASE_URL ? 'Configurado ✓' : 'NO CONFIGURADO ✗');
 
-        await db.ready();
-        console.log('[STARTUP] Base de datos lista ✓');
+        if (process.env.DATABASE_URL) {
+            try {
+                console.log('[STARTUP] Intentando conectar a PostgreSQL (DATABASE_URL)...');
+                const PostgresDB = require('./db');
+                const pgDb = new PostgresDB();
+                await pgDb.ready();
+                db = pgDb;
+                console.log('[STARTUP] Base de datos PostgreSQL lista ✓');
+            } catch (pgErr) {
+                console.error('[STARTUP] ⚠️ Fallo al conectar a PostgreSQL:', pgErr.message);
+                console.log('[STARTUP] 🔄 Activando modo de respaldo: Base de datos JSON local...');
+                const JsonDB = require('./db_json');
+                const jsonDb = new JsonDB();
+                await jsonDb.ready();
+                db = jsonDb;
+                console.log('[STARTUP] Base de datos JSON de respaldo lista ✓');
+            }
+        } else {
+            console.log('[STARTUP] Usando base de datos JSON local...');
+            const JsonDB = require('./db_json');
+            const jsonDb = new JsonDB();
+            await jsonDb.ready();
+            db = jsonDb;
+            console.log('[STARTUP] Base de datos JSON lista ✓');
+        }
 
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`═══════════════════════════════════════════════════════`);
@@ -379,12 +400,13 @@ const PORT = process.env.PORT || 3005;
 
 process.on('SIGTERM', async () => {
     console.log('SIGTERM recibido, cerrando BD...');
-    await db.close();
+    if (db) await db.close();
     process.exit(0);
 });
 
 process.on('SIGINT', async () => {
     console.log('SIGINT recibido, cerrando BD...');
-    await db.close();
+    if (db) await db.close();
     process.exit(0);
 });
+
