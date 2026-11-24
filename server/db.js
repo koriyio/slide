@@ -507,7 +507,8 @@ class SlideDB {
 
     getVarietyMultiplier(validTricks) {
         if (!validTricks || validTricks.length === 0) return 0.0;
-        const families = new Set(validTricks.map(t => this.getFamilyShort(t.family)));
+        const validFamilies = validTricks.map(t => this.getFamilyShort(t.family)).filter(f => f.length > 0);
+        const families = new Set(validFamilies);
         const numFamilies = families.size;
         if (numFamilies === 1) return 1.00;
         if (numFamilies === 2) return 1.00;
@@ -535,11 +536,10 @@ class SlideDB {
             filteredTricks = Object.values(seenTricks);
         }
 
-        let scores = filteredTricks.map(t => t.finalScore);
-        scores.sort((a, b) => b - a);
+        const sortedTricks = [...filteredTricks].sort((a, b) => b.finalScore - a.finalScore);
         const maxToCount = phase === 'Final' ? 4 : 3;
-        const topScores = scores.slice(0, maxToCount);
-        const topTricksObjects = filteredTricks.filter(t => topScores.includes(t.finalScore)).slice(0, maxToCount);
+        const topTricksObjects = sortedTricks.slice(0, maxToCount);
+        const topScores = topTricksObjects.map(t => t.finalScore);
 
         const baseTotal = topScores.reduce((acc, score) => acc + score, 0);
         const m_var = this.getVarietyMultiplier(topTricksObjects);
@@ -558,29 +558,51 @@ class SlideDB {
     }
 
     async toggleBestSlide(battleId, skaterId) {
-        const res = await this.pool.query(
-            `SELECT bs.judging, b.phase FROM battle_skaters bs
-             JOIN battles b ON b.id = bs.battle_id
-             WHERE bs.battle_id = $1 AND bs.skater_id = $2`,
-            [battleId, skaterId]
-        );
+        const client = await this.pool.connect();
+        try {
+            await client.query('BEGIN');
+            const res = await client.query(
+                `SELECT bs.skater_id, bs.judging, b.phase FROM battle_skaters bs
+                 JOIN battles b ON b.id = bs.battle_id
+                 WHERE bs.battle_id = $1`,
+                [battleId]
+            );
 
-        if (res.rows.length === 0) return { success: false };
+            if (res.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return { success: false };
+            }
 
-        const row = res.rows[0];
-        let judging = row.judging;
-        const phase = row.phase;
+            const targetRow = res.rows.find(r => String(r.skater_id) === String(skaterId));
+            if (!targetRow) {
+                await client.query('ROLLBACK');
+                return { success: false };
+            }
 
-        judging.bestSlideBonus = !judging.bestSlideBonus;
-        const totalScore = this.calculateTotalScore(judging, phase);
+            const willBeActive = !targetRow.judging?.bestSlideBonus;
+            const phase = targetRow.phase;
 
-        await this.pool.query(
-            `UPDATE battle_skaters SET judging = $1, total_score = $2
-             WHERE battle_id = $3 AND skater_id = $4`,
-            [JSON.stringify(judging), totalScore, battleId, skaterId]
-        );
+            for (const row of res.rows) {
+                let judging = row.judging || {};
+                const isTarget = String(row.skater_id) === String(skaterId);
+                judging.bestSlideBonus = isTarget ? willBeActive : false;
+                const totalScore = this.calculateTotalScore(judging, phase);
 
-        return { success: true };
+                await client.query(
+                    `UPDATE battle_skaters SET judging = $1, total_score = $2
+                     WHERE battle_id = $3 AND skater_id = $4`,
+                    [JSON.stringify(judging), totalScore, battleId, row.skater_id]
+                );
+            }
+
+            await client.query('COMMIT');
+            return { success: true };
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
     }
 
     async swapSkaters(skaterId1, battleId1, skaterId2, battleId2) {

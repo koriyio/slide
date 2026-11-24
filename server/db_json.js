@@ -305,7 +305,9 @@ class JsonDB {
             const topScores = bestTricks.map(t => t.finalScore);
 
             // Multiplicador de variedad basado en los MEJORES trucos (bestTricks)
-            const families = new Set(bestTricks.map(t => (t.family || '').match(/^(F\d+)/)?.[1] || ''));
+            const rawFamilies = bestTricks.map(t => (t.family || '').match(/^(F\d+)/)?.[1] || '');
+            const validFamilies = rawFamilies.filter(f => f.length > 0);
+            const families = new Set(validFamilies);
             const numFamilies = families.size;
             let m_var = 1.0;
             if (numFamilies === 3) m_var = 1.05;
@@ -331,13 +333,22 @@ class JsonDB {
             const battle = db.battles.find(b => b.id === battleId);
             if (!battle) return { success: false };
 
-            const skater = battle.skaters.find(s => String(s.skaterId) === String(skaterId));
-            if (!skater) return { success: false };
+            const targetSkater = battle.skaters.find(s => String(s.skaterId) === String(skaterId));
+            if (!targetSkater) return { success: false };
 
-            if (!skater.judging) skater.judging = {};
-            skater.judging.bestSlideBonus = !skater.judging.bestSlideBonus;
-            
-            skater.totalScore = this.calculateTotalScore(skater.judging, battle.phase);
+            if (!targetSkater.judging) targetSkater.judging = {};
+            const willBeActive = !targetSkater.judging.bestSlideBonus;
+
+            // En una batalla solo un patinador puede tener Best Slide: desactivar en los demás
+            battle.skaters.forEach(s => {
+                if (s.judging && s.judging.bestSlideBonus) {
+                    s.judging.bestSlideBonus = false;
+                    s.totalScore = this.calculateTotalScore(s.judging, battle.phase);
+                }
+            });
+
+            targetSkater.judging.bestSlideBonus = willBeActive;
+            targetSkater.totalScore = this.calculateTotalScore(targetSkater.judging, battle.phase);
             
             await this.saveDB(db);
             return { success: true };

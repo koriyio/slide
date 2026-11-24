@@ -9,12 +9,37 @@ let db = null;
 
 const app = express();
 const server = http.createServer(app);
+
+// Configuración CORS flexible para permitir conexiones desde Netlify, Render y desarrollo local
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (process.env.CORS_ORIGIN) {
+            const allowed = process.env.CORS_ORIGIN.split(',').map(s => s.trim());
+            if (allowed.includes(origin) || allowed.includes('*')) {
+                return callback(null, true);
+            }
+        }
+        // Permitir Netlify (*.netlify.app), Render (*.onrender.com) y localhost
+        if (
+            origin.endsWith('.netlify.app') ||
+            origin.includes('netlify') ||
+            origin.endsWith('.onrender.com') ||
+            origin.includes('localhost') ||
+            origin.includes('127.0.0.1')
+        ) {
+            return callback(null, true);
+        }
+        return callback(null, true);
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
+};
+
+app.use(cors(corsOptions));
+
 const io = new Server(server, {
-    cors: {
-        origin: process.env.NODE_ENV === 'production' ? (process.env.CORS_ORIGIN || true) : true,
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
+    cors: corsOptions
 });
 
 
@@ -41,6 +66,10 @@ const AUTH_CONFIG = {
 app.use(express.static(path.join(__dirname, '..')));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', server: 'slide-battle', time: new Date().toISOString() });
+});
 
 if (process.env.NODE_ENV !== 'production') {
     app.get('/api/db', async (req, res) => {
@@ -122,6 +151,7 @@ io.on('connection', async (socket) => {
             io.emit('roles-update', connectedRoles);
         }
         currentRole = null;
+        authenticated = false;
     });
 
     socket.on('disconnect', () => {
@@ -129,6 +159,8 @@ io.on('connection', async (socket) => {
             connectedRoles[currentRole] = null;
             io.emit('roles-update', connectedRoles);
         }
+        currentRole = null;
+        authenticated = false;
     });
 
     function requireAuth(requiredRole = 'Juez 1', actionName) {
@@ -213,6 +245,10 @@ io.on('connection', async (socket) => {
 
     // --- Tricks ---
     socket.on('save-trick', async ({ battleId, skaterId, trickPerformed, role, slotIndex }) => {
+        if (!authenticated || !currentRole) {
+            console.warn(`[AUDIT] Intento de save-trick sin autenticar - IP: ${socket.handshake.address}`);
+            return;
+        }
         // Validar que el juez que envía es quien dice ser, o es el Admin
         if (currentRole !== role && currentRole !== 'Juez 1') {
             console.warn(`[AUDIT] Intento de save-trick ilegal - Autor: ${currentRole}, Objetivo: ${role}`);
@@ -225,6 +261,10 @@ io.on('connection', async (socket) => {
     });
 
     socket.on('delete-trick', async ({ battleId, skaterId, slotIndex, role }) => {
+        if (!authenticated || !currentRole) {
+            console.warn(`[AUDIT] Intento de delete-trick sin autenticar - IP: ${socket.handshake.address}`);
+            return;
+        }
         if (currentRole !== role && currentRole !== 'Juez 1') {
             console.warn(`[AUDIT] Intento de delete-trick ilegal - Autor: ${currentRole}, Objetivo: ${role}`);
             return;
@@ -294,7 +334,7 @@ io.on('connection', async (socket) => {
 
     // --- Finish Battle ---
     socket.on('finish-battle', async (battleId, callback) => {
-        if (currentRole !== 'Juez 1') {
+        if (!requireAuth('Juez 1', 'finalizar batallas')) {
             if (callback) callback({ success: false, message: 'Solo Juez 1 puede finalizar batallas' });
             return;
         }

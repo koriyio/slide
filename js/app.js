@@ -589,7 +589,7 @@ function setupEventListeners() {
         if (!raw || !catId) return showToast('Completa todos los campos', true);
 
         const lines = raw.split('\n');
-        let count = 0;
+        const newSkaters = [];
 
         lines.forEach(line => {
             if (!line.trim()) return;
@@ -605,7 +605,7 @@ function setupEventListeners() {
             let idCode = cols[3] || '';
 
             if (fullName) {
-                // Limpieza de nombre (quitar Rank si se col├│ en el nombre)
+                // Limpieza de nombre (quitar Rank si se coló en el nombre)
                 if (!isNaN(parseInt(fullName.split(' ')[0]))) {
                     fullName = fullName.split(' ').slice(1).join(' ');
                 }
@@ -614,19 +614,26 @@ function setupEventListeners() {
                 const firstName = nameParts[0];
                 const lastName = nameParts.slice(1).join(' ') || ' ';
 
-                // Si el rank no es v├ílido, intentar usar el índice o 0
-                if (isNaN(rank)) rank = count + 1;
+                if (isNaN(rank)) rank = newSkaters.length + 1;
 
-                window.db.addSkater(firstName, lastName, catId, rank, idCode, nationality);
-                count++;
+                newSkaters.push({
+                    id: String(Date.now() + newSkaters.length + Math.floor(Math.random() * 10000)),
+                    firstName,
+                    lastName,
+                    categoryId: catId,
+                    seedNumber: rank,
+                    externalId: idCode,
+                    nationality
+                });
             }
         });
 
-        if (count > 0) {
+        if (newSkaters.length > 0) {
+            window.db.importSkaters(newSkaters);
             ui.modalBulk.classList.add('hidden');
             renderSkaters();
             renderDashboard();
-            showToast(`${count} patinadores importados con éxito.`);
+            showToast(`${newSkaters.length} patinadores importados con éxito.`);
         } else {
             showToast('No se pudieron procesar los datos. Revisa el formato (Rank; Nombre; Nat; ID)', true);
         }
@@ -683,8 +690,8 @@ function populateTricks(filter = '', selectId = 'judge-trick-select') {
         filteredTricks.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.id;
-            const diffLevel = t.id.split('-')[1].charAt(0).toUpperCase();
-            opt.innerText = `${t.name} (Base: ${t.baseScore.toFixed(1)} - Nivel ${diffLevel})`;
+            const diffLevel = t.id.split('-')[1]?.charAt(0).toUpperCase() || '-';
+            opt.innerText = `${t.name} (Base: ${(t.baseScore || 0).toFixed(1)} - Nivel ${diffLevel})`;
             select.appendChild(opt);
         });
     } else {
@@ -696,8 +703,8 @@ function populateTricks(filter = '', selectId = 'judge-trick-select') {
             tricks.filter(t => t.family === f).forEach(t => {
                 const opt = document.createElement('option');
                 opt.value = t.id;
-                const diffLevel = t.id.split('-')[1].charAt(0).toUpperCase();
-                opt.innerText = `${t.name} (Base: ${t.baseScore.toFixed(1)} - Nivel ${diffLevel})`;
+                const diffLevel = t.id.split('-')[1]?.charAt(0).toUpperCase() || '-';
+                opt.innerText = `${t.name} (Base: ${(t.baseScore || 0).toFixed(1)} - Nivel ${diffLevel})`;
                 og.appendChild(opt);
             });
             select.appendChild(og);
@@ -1954,7 +1961,7 @@ function exportTournamentCSV() {
         if (skaterBattles.length > 0) {
             const lastBattle = skaterBattles.reduce((last, b) => 
                 (phaseMap[b.phase] || 0) > (phaseMap[last.phase] || 0) ? b : last, skaterBattles[0]);
-            const result = lastBattle.skaters.find(s => s.skaterId === sk.id);
+            const result = lastBattle.skaters.find(s => String(s.skaterId) === String(sk.id));
 
             finalPhase = lastBattle.phase;
             finalPhaseNum = phaseMap[lastBattle.phase] || 1;

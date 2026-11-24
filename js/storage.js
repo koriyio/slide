@@ -5,7 +5,39 @@
 
 class SlideStorage {
     constructor() {
-        this.socket = io();
+        // Detección automática del backend:
+        // En localhost se conecta al servidor local (o mismo origen si se sirve desde 3005).
+        // En Netlify u otro hosting se conecta al backend en Render (por defecto https://slide-battle-live.onrender.com).
+        // Permite sobreescribir vía parámetro URL ?server=https://... o localStorage.getItem('slide_server_url')
+        const defaultRenderBackend = 'https://slide-battle-live.onrender.com';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryServer = urlParams.get('server') || urlParams.get('backend');
+        if (queryServer) {
+            localStorage.setItem('slide_server_url', queryServer.replace(/\/$/, ''));
+        }
+        const savedServer = localStorage.getItem('slide_server_url');
+
+        let serverEndpoint = '';
+        if (savedServer) {
+            serverEndpoint = savedServer;
+        } else if (isLocal) {
+            serverEndpoint = window.location.port === '3005' ? '' : 'http://localhost:3005';
+        } else {
+            serverEndpoint = window.SLIDE_SERVER_URL || defaultRenderBackend;
+        }
+
+        this.serverEndpoint = serverEndpoint;
+        console.log('[STORAGE] Conectando a backend:', serverEndpoint || 'mismo origen (local)');
+
+        this.socket = io(serverEndpoint, {
+            transports: ['websocket', 'polling'],
+            withCredentials: true
+        });
+
+        this.setupConnectionListeners();
+
         this.localData = {
             skaters: [],
             battles: [],
@@ -76,6 +108,46 @@ class SlideStorage {
         });
     }
 
+    setupConnectionListeners() {
+        this.socket.on('connect', () => {
+            console.log('[SOCKET] Conectado exitosamente con ID:', this.socket.id);
+            this.updateBadge('connected');
+        });
+
+        this.socket.on('disconnect', (reason) => {
+            console.warn('[SOCKET] Desconectado del servidor:', reason);
+            this.updateBadge('disconnected');
+        });
+
+        this.socket.on('connect_error', (err) => {
+            console.warn('[SOCKET] Error o espera de conexión:', err.message);
+            this.updateBadge('connecting');
+        });
+    }
+
+    updateBadge(status) {
+        const badge = document.getElementById('server-status-badge');
+        const dot = document.getElementById('server-status-dot');
+        const text = document.getElementById('server-status-text');
+        if (!badge || !dot || !text) return;
+
+        const serverName = this.serverEndpoint ? this.serverEndpoint.replace(/^https?:\/\//, '') : 'Localhost (3005)';
+
+        if (status === 'connected') {
+            dot.style.background = '#22c55e';
+            text.innerHTML = `🟢 Servidor conectado: <strong>${serverName}</strong>`;
+            badge.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+        } else if (status === 'connecting') {
+            dot.style.background = '#eab308';
+            text.innerHTML = `⏳ Conectando a <strong>${serverName}</strong> (Render puede tardar ~30s si está hibernando)...`;
+            badge.style.borderColor = 'rgba(234, 179, 8, 0.4)';
+        } else {
+            dot.style.background = '#ef4444';
+            text.innerHTML = `🔴 Desconectado de <strong>${serverName}</strong>. Reintentando...`;
+            badge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        }
+    }
+
     // Role Methods (Async callback via Socket.io)
     login(role, username, password, callback) {
         // Si no se proveen credenciales, usar las por defecto según el rol
@@ -93,7 +165,23 @@ class SlideStorage {
                 password: defaultCredentials[role]?.pass || 'slide'
             };
 
+        if (!this.socket.connected) {
+            callback(false, '⚠️ Sin conexión con el backend. El servidor en Render o Localhost está apagado.');
+            return;
+        }
+
+        let responded = false;
+        const timeout = setTimeout(() => {
+            if (!responded) {
+                responded = true;
+                callback(false, '⏱️ Tiempo de espera agotado. El servidor no responde.');
+            }
+        }, 8000);
+
         this.socket.emit('login', creds, (res) => {
+            if (responded) return;
+            responded = true;
+            clearTimeout(timeout);
             if (res.success) {
                 this.currentRole = role;
                 this.localData = res.db;
@@ -213,7 +301,11 @@ class SlideStorage {
     }
 
     _calculateHeatSizes(n) {
-        if (n <= 5) return [n];
+        if (n <= 4) return [n];
+        if (n === 5) return [3, 2];
+        if (n === 6) return [3, 3];
+        if (n === 7) return [4, 3];
+        if (n === 8) return [4, 4];
         const k = Math.floor(n / 4);
         const rem = n % 4;
         if (rem === 0) return Array(k).fill(4);
@@ -283,13 +375,14 @@ class SlideStorage {
         const order = wsBracketOrder[g] || Array.from({ length: g }, (_, i) => i);
         let finalGroups = order.map(idx => buckets[idx]);
 
+        const initialPhase = n <= 8 ? 'Semifinal' : (n <= 16 ? 'Cuartos' : 'Preliminar');
         let newBattles = [];
         finalGroups.forEach((grp, idx) => {
             if (!grp) return;
             newBattles.push({
                 id: String(Date.now() + idx + Math.floor(Math.random() * 1000)),
                 categoryId: categoryId,
-                phase: 'Preliminar',
+                phase: initialPhase,
                 heatNumber: idx + 1,
                 status: 'pending',
                 skaters: grp.members.map(m => ({
@@ -513,7 +606,7 @@ class SlideStorage {
         } else if (advancedSkaterIds.length > 4) {
             if (currentPhase === 'Preliminar' || currentPhase === 'Cuartos') nextPhase = 'Semifinal';
             else nextPhase = 'Final';
-        } else if (advancedSkaterIds.length > 2) {
+        } else if (advancedSkaterIds.length >= 2) {
             nextPhase = 'Final';
         } else {
             return false; // No hay suficientes para otra fase

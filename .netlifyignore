@@ -1,0 +1,8 @@
+# Ignorar backend y archivos innecesarios en Netlify
+server/
+.git/
+*.bat
+*.xlsx
+*.pdf
+*.md
+downloaded_index*.html
