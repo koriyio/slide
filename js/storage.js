@@ -10,7 +10,8 @@ class SlideStorage {
         // En Netlify u otro hosting se conecta al backend en Render (por defecto https://slide-battle-live.onrender.com).
         // Permite sobreescribir vía parámetro URL ?server=https://... o localStorage.getItem('slide_server_url')
         const defaultRenderBackend = 'https://slide-battle-live.onrender.com';
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isCapacitorNative = Boolean(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+        const isLocal = !isCapacitorNative && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
         const urlParams = new URLSearchParams(window.location.search);
         const queryServer = urlParams.get('server') || urlParams.get('backend');
