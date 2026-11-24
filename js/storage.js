@@ -136,15 +136,15 @@ class SlideStorage {
 
         if (status === 'connected') {
             dot.style.background = '#22c55e';
-            text.innerHTML = `🟢 Servidor conectado: <strong>${serverName}</strong>`;
+            text.innerHTML = `🟢 Servidor en línea · Listo para calificar`;
             badge.style.borderColor = 'rgba(34, 197, 94, 0.4)';
         } else if (status === 'connecting') {
             dot.style.background = '#eab308';
-            text.innerHTML = `⏳ Conectando a <strong>${serverName}</strong> (Render puede tardar ~30s si está hibernando)...`;
+            text.innerHTML = `⏳ Conectando con el torneo...`;
             badge.style.borderColor = 'rgba(234, 179, 8, 0.4)';
         } else {
             dot.style.background = '#ef4444';
-            text.innerHTML = `🔴 Desconectado de <strong>${serverName}</strong>. Reintentando...`;
+            text.innerHTML = `🔴 Sin conexión · Reintentando...`;
             badge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
         }
     }

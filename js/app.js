@@ -183,19 +183,26 @@ function setupLogin() {
         });
     }
 
-    if (ui.btnLogout) {
-        ui.btnLogout.addEventListener('click', () => {
-            if (confirm('\u00BFSeguro que deseas salir?')) {
-                if (window.db && window.db.socket) {
-                    window.db.socket.emit('logout');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 100);
-                } else {
+    const logoutHandler = () => {
+        if (confirm('\u00BFSeguro que deseas salir?')) {
+            if (window.db && window.db.socket) {
+                window.db.socket.emit('logout');
+                setTimeout(() => {
                     location.reload();
-                }
+                }, 100);
+            } else {
+                location.reload();
             }
-        });
+        }
+    };
+
+    if (ui.btnLogout) {
+        ui.btnLogout.addEventListener('click', logoutHandler);
+    }
+
+    const mobileBtnLogout = document.getElementById('mobile-btn-logout');
+    if (mobileBtnLogout) {
+        mobileBtnLogout.addEventListener('click', logoutHandler);
     }
 
     // Evento Modo Combo
@@ -215,9 +222,17 @@ function setupLogin() {
 
 function applyRoleRestrictions() {
     const role = window.db.currentRole;
+    const mobileRoleBadge = document.getElementById('mobile-role-badge');
+    if (mobileRoleBadge) mobileRoleBadge.innerText = role || 'Juez';
+
     if (role !== 'Juez 1') {
         // Ocultar opciones de admin (skaters, brackets y configuracion)
         ui.navItems.forEach(nav => {
+            if (nav.dataset.view === 'skaters' || nav.dataset.view === 'brackets') {
+                nav.style.display = 'none';
+            }
+        });
+        document.querySelectorAll('.bottom-nav-item').forEach(nav => {
             if (nav.dataset.view === 'skaters' || nav.dataset.view === 'brackets') {
                 nav.style.display = 'none';
             }
@@ -235,6 +250,9 @@ window.navigateTo = function (viewName) {
 
     // Remove active classes
     ui.navItems.forEach(nav => nav.classList.remove('active'));
+    document.querySelectorAll('.bottom-nav-item').forEach(nav => {
+        nav.classList.toggle('active', nav.dataset.view === viewName);
+    });
     ui.views.forEach(view => view.classList.remove('active'));
 
     // Add active class
@@ -262,12 +280,12 @@ if (btnMenuToggle && sidebar) {
 
 // Navigation Logic
 function setupNavigation() {
-    // Sidebar items
-    ui.navItems.forEach(item => {
+    // Sidebar items & bottom nav items
+    document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             window.navigateTo(item.dataset.view);
-            // Cerrar sidebar en m\u00f3viles tras navegar
+            // Cerrar sidebar en móviles tras navegar
             if (window.innerWidth <= 768 && sidebar) {
                 sidebar.classList.remove('show');
             }
@@ -1428,6 +1446,50 @@ function renderActiveBattle() {
     console.log(`[DEBUG] Skaters en DB:`, db.skaters.length);
     console.log(`[DEBUG] Skaters en Batalla:`, battle.skaters.length);
 
+    // Selector rápido de deportistas en móvil / APK
+    const mobileTabsEl = document.getElementById('mobile-skater-tabs');
+    const maxSlotsGlobal = battle.phase === 'Final' ? 5 : 4;
+    const myRoleGlobal = window.db.currentRole;
+    if (battle.skaters.length > 0) {
+        const validIds = battle.skaters.map(x => String(x.skaterId));
+        if (!window.activeMobileSkaterId || (window.activeMobileSkaterId !== 'ALL' && !validIds.includes(String(window.activeMobileSkaterId)))) {
+            window.activeMobileSkaterId = String(battle.skaters[0].skaterId);
+        }
+    }
+    if (mobileTabsEl) {
+        mobileTabsEl.innerHTML = '';
+        battle.skaters.forEach((bsItem, idx) => {
+            const info = db.skaters.find(s => String(s.id) === String(bsItem.skaterId));
+            const cnt = ((bsItem.judging && bsItem.judging[myRoleGlobal]) || []).filter(x => x !== null && x !== undefined).length;
+            const isDone = cnt >= maxSlotsGlobal;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `mobile-skater-tab ${String(window.activeMobileSkaterId) === String(bsItem.skaterId) ? 'active' : ''} ${isDone ? 'done' : ''}`;
+            const shortName = info ? info.firstName.split(' ')[0] : `#${idx + 1}`;
+            btn.innerHTML = `<span>${idx + 1}. ${shortName}</span><span style="opacity:0.8; font-size:0.72rem;">(${cnt}/${maxSlotsGlobal})</span>`;
+            btn.onclick = () => {
+                window.activeMobileSkaterId = String(bsItem.skaterId);
+                mobileTabsEl.querySelectorAll('.mobile-skater-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                ui.activeBattleGrid.querySelectorAll('.skater-battle-column').forEach(c => {
+                    c.classList.toggle('mobile-hidden-col', c.dataset.skaterId !== String(bsItem.skaterId));
+                });
+            };
+            mobileTabsEl.appendChild(btn);
+        });
+        const allBtn = document.createElement('button');
+        allBtn.type = 'button';
+        allBtn.className = `mobile-skater-tab ${window.activeMobileSkaterId === 'ALL' ? 'active' : ''}`;
+        allBtn.innerHTML = '<i class="ph ph-squares-four"></i> Todos';
+        allBtn.onclick = () => {
+            window.activeMobileSkaterId = 'ALL';
+            mobileTabsEl.querySelectorAll('.mobile-skater-tab').forEach(b => b.classList.remove('active'));
+            allBtn.classList.add('active');
+            ui.activeBattleGrid.querySelectorAll('.skater-battle-column').forEach(c => c.classList.remove('mobile-hidden-col'));
+        };
+        mobileTabsEl.appendChild(allBtn);
+    }
+
     battle.skaters.forEach(bs => {
         const sInfo = db.skaters.find(s => String(s.id) === String(bs.skaterId));
         
@@ -1446,16 +1508,21 @@ function renderActiveBattle() {
             return;
         }
 
-        // Din├ímico: 5 slots en la Final, 4 en el resto
+        // Dinámico: 5 slots en la Final, 4 en el resto
         const maxSlots = battle.phase === 'Final' ? 5 : 4;
         const myRole = window.db.currentRole;
         const judging = bs.judging || { 'Juez 1': [], 'Juez 2': [], 'Juez 3': [] };
 
-        // Verificar si el juez actual ya complet├│ sus slots
+        // Verificar si el juez actual ya completó sus slots
         const mySlotsCount = (judging[myRole] || []).filter(s => s !== null && s !== undefined).length;
         const isDoneByMe = mySlotsCount >= maxSlots;
 
         const col = document.createElement('div');
+        col.className = 'skater-battle-column';
+        col.dataset.skaterId = String(bs.skaterId);
+        if (window.activeMobileSkaterId && window.activeMobileSkaterId !== 'ALL' && String(window.activeMobileSkaterId) !== String(bs.skaterId)) {
+            col.classList.add('mobile-hidden-col');
+        }
         let cardStyle = 'background:var(--bg-surface); border:1px solid var(--border);';
         if (isDoneByMe && battle.status !== 'completed') {
             cardStyle = 'background:linear-gradient(to bottom, rgba(16, 185, 129, 0.08), var(--bg-surface)); border:1px solid rgba(16, 185, 129, 0.4); box-shadow: 0 4px 12px rgba(0,0,0,0.1);';

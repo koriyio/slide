@@ -3,9 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Slide Competition Manager | Inline Freestyle</title>
-    <link rel="stylesheet" href="css/style.css?v=1.1.0">
+    <link rel="stylesheet" href="css/style.css?v=1.5.0">
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -86,16 +88,21 @@
 
     <!-- Layout Principal -->
     <div class="app-container" id="main-app" style="display:none;">
-        <!-- Mobile Header (Solo visible en móviles) -->
+        <!-- Mobile Header (Solo visible en móviles / APK) -->
         <header class="mobile-header">
-            <button id="btn-menu-toggle" class="btn-icon">
+            <button id="btn-menu-toggle" class="btn-icon" title="Menú">
                 <i class="ph ph-list"></i>
             </button>
             <div class="mobile-brand">
                 <img src="img/logo.png?v=2" alt="Logo">
                 <span>SLIDE BATTLE</span>
             </div>
-            <div style="width: 40px;"></div> <!-- Spacer -->
+            <div class="mobile-header-actions">
+                <span id="mobile-role-badge" class="mobile-role-pill">Juez</span>
+                <button id="mobile-btn-logout" class="btn-icon" title="Cerrar sesión">
+                    <i class="ph ph-sign-out"></i>
+                </button>
+            </div>
         </header>
 
         <!-- Sidebar -->
@@ -296,6 +303,8 @@
                     </div>
                 </header>
 
+                <div id="mobile-skater-tabs" class="mobile-skater-tabs"></div>
+
                 <div id="active-battle-grid"
                     style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1.5rem;">
                     <!-- Skater Battle Columns (Dynamic) -->
@@ -303,6 +312,26 @@
             </section>
 
         </main>
+
+        <!-- Barra de Navegación Inferior Nativa (Solo móviles / APK) -->
+        <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+            <a href="#" class="bottom-nav-item active" data-view="dashboard">
+                <i class="ph-fill ph-squares-four"></i>
+                <span>Inicio</span>
+            </a>
+            <a href="#" class="bottom-nav-item" data-view="skaters">
+                <i class="ph-fill ph-users"></i>
+                <span>Atletas</span>
+            </a>
+            <a href="#" class="bottom-nav-item" data-view="battles">
+                <i class="ph-fill ph-sword"></i>
+                <span>Competir</span>
+            </a>
+            <a href="#" class="bottom-nav-item" data-view="brackets">
+                <i class="ph-fill ph-tree-structure"></i>
+                <span>Llaves</span>
+            </a>
+        </nav>
     </div>
 
     <!-- Modals -->
@@ -615,8 +644,8 @@
             document.write('<script src="/socket.io/socket.io.js"><\/script>');
         }
     </script>
-    <script src="js/storage.js?v=1.4.0"></script>
-    <script src="js/app.js?v=1.4.0"></script>
+    <script src="js/storage.js?v=1.5.0"></script>
+    <script src="js/app.js?v=1.5.0"></script>
 </body>
 
 </html>
